@@ -209,7 +209,7 @@ export default function Dashboard({ tokens }) {
       <Head>
         <title>CryptoLens — Dashboard</title>
         <meta name="description" content="Your personalized crypto dashboard to track tokens and manage favorites." />
-        <link rel="canonical" href="https://cryptolens.app/dashboard" />
+        <link rel="canonical" href="https://cryptolens.casaislabs.com/dashboard" />
       </Head>
       <AppHeader title="CryptoLens" />
       {/* Dashboard Content */}

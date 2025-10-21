@@ -236,7 +236,7 @@ export default function LoginPage() {
       <Head>
         <title>CryptoLens — Sign In</title>
         <meta name="description" content="Sign in to CryptoLens to sync your favorites and personalize your dashboard." />
-        <link rel="canonical" href="https://cryptolens.app/login" />
+        <link rel="canonical" href="https://cryptolens.casaislabs.com/login" />
       </Head>
       {status === "loading" ? (
         <div className="text-center text-white p-10">Checking session...</div>
