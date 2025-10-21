@@ -3,7 +3,6 @@ import "@/styles/globals.css";
 import '@rainbow-me/rainbowkit/styles.css';
 import { Toaster } from "@/components/ui/sonner";
 import { SessionProvider } from "next-auth/react";
-import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { WagmiProvider } from 'wagmi';
 import {
   QueryClientProvider,
@@ -11,15 +10,22 @@ import {
 } from "@tanstack/react-query";
 import { wagmiConfig, queryClientConfig } from '@/lib/web3Config';
 import Head from "next/head";
+import dynamic from 'next/dynamic';
 
 // Create QueryClient instance with custom configuration
 const queryClient = new QueryClient(queryClientConfig);
+
+// Load RainbowKitProvider only on the client to avoid SSR CJS/ESM interop issues
+const RainbowKitProviderNoSSR = dynamic(
+  () => import('@rainbow-me/rainbowkit').then((m) => m.RainbowKitProvider),
+  { ssr: false }
+);
 
 export default function App({ Component, pageProps }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider>
+        <RainbowKitProviderNoSSR>
           <SessionProvider session={pageProps.session}>
             <Head>
               <title>CryptoLens</title>
@@ -43,7 +49,7 @@ export default function App({ Component, pageProps }) {
             <Component {...pageProps} />
             <Toaster />
           </SessionProvider>
-        </RainbowKitProvider>
+        </RainbowKitProviderNoSSR>
       </QueryClientProvider>
     </WagmiProvider>
   );

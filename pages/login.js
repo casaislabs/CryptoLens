@@ -2,7 +2,18 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useAccount, useChainId, useSignMessage } from 'wagmi';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import dynamic from 'next/dynamic';
+
+// Client-only wrapper for ConnectButton.Custom to avoid SSR import of RainbowKit
+const ConnectButtonCustom = dynamic(async () => {
+  const mod = await import('@rainbow-me/rainbowkit');
+  const C = mod.ConnectButton;
+  function CustomWrapper({ children }) {
+    return <C.Custom>{children}</C.Custom>;
+  }
+  CustomWrapper.displayName = 'ConnectButtonCustom';
+  return CustomWrapper;
+}, { ssr: false });
 import {
   Sheet,
   SheetTrigger,
@@ -11,11 +22,10 @@ import {
   SheetTitle,
   SheetDescription,
   SheetFooter,
-  SheetClose,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { LogIn, Wallet } from "lucide-react";
+import { Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { parseApiError, getFriendlyErrorMessage } from '@/lib/apiErrors';
 import Head from "next/head";
@@ -199,7 +209,7 @@ export default function LoginPage() {
         )}
       </Button>
 
-      <ConnectButton.Custom>
+      <ConnectButtonCustom>
         {({ openConnectModal, account, chain, mounted, authenticationStatus }) => {
           const ready = mounted && authenticationStatus !== 'loading';
           const connected = ready && account && chain;
@@ -217,7 +227,7 @@ export default function LoginPage() {
             </Button>
           );
         }}
-      </ConnectButton.Custom>
+      </ConnectButtonCustom>
     </div>
   );
 
