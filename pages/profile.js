@@ -37,42 +37,44 @@ export default function Profile() {
   };
 
   // Normalize social links before sending to the backend
-  const normalizeSocialLink = (platform, value) => {
-    if (!value) return null;
-
-    if (platform === "twitter") {
-      if (value.startsWith("https://twitter.com/") || value.startsWith("https://x.com/")) {
-        return value;
-      }
-      if (value.startsWith("@")) {
-        return `https://twitter.com/${value.slice(1)}`;
-      }
-      return `https://twitter.com/${value}`;
-    }
-
-    if (platform === "telegram") {
-      if (value.startsWith("https://t.me/")) {
-        return value;
-      }
-      if (value.startsWith("@")) {
-        return `https://t.me/${value.slice(1)}`;
-      }
-      return `https://t.me/${value}`;
-    }
-
-    return value;
-  };
-
+  // Normalize social links before sending to the backend (stable identity)
+  const normalizeSocialLink = useCallback((platform, value) => {
+     if (!value) return null;
+  
+     if (platform === "twitter") {
+       if (value.startsWith("https://twitter.com/") || value.startsWith("https://x.com/")) {
+         return value;
+       }
+       if (value.startsWith("@")) {
+         return `https://twitter.com/${value.slice(1)}`;
+       }
+       return `https://twitter.com/${value}`;
+     }
+  
+     if (platform === "telegram") {
+       if (value.startsWith("https://t.me/")) {
+         return value;
+       }
+       if (value.startsWith("@")) {
+         return `https://t.me/${value.slice(1)}`;
+       }
+       return `https://t.me/${value}`;
+     }
+  
+     return value;
+  }, []);
+  
   // Validate social links
-  const validateSocialLinks = (links) => {
-    const twitterValid = /^https:\/\/(www\.)?(twitter\.com|x\.com)\/[a-zA-Z0-9_]{1,15}$/.test(
-      normalizeSocialLink("twitter", links.twitter)
-    );
-    const telegramValid = /^https:\/\/t\.me\/[a-zA-Z0-9_]{5,32}$/.test(
-      normalizeSocialLink("telegram", links.telegram)
-    );
-    setValidLinks({ twitter: twitterValid, telegram: telegramValid });
-  };
+  // Validate social links (stable identity)
+  const validateSocialLinks = useCallback((links) => {
+     const twitterValid = /^https:\/\/(www\.)?(twitter\.com|x\.com)\/[a-zA-Z0-9_]{1,15}$/.test(
+       normalizeSocialLink("twitter", links.twitter)
+     );
+     const telegramValid = /^https:\/\/t\.me\/[a-zA-Z0-9_]{5,32}$/.test(
+       normalizeSocialLink("telegram", links.telegram)
+     );
+     setValidLinks({ twitter: twitterValid, telegram: telegramValid });
+  }, [normalizeSocialLink]);
 
   // Toggle edit mode and update the profile
   const toggleEdit = async () => {
@@ -152,56 +154,56 @@ export default function Profile() {
   };
   // Load profile data from database
   useEffect(() => {
-    const loadProfile = async () => {
-      if (!session?.user?.email) return;
-      
-      setProfileLoading(true);
-      try {
-        const response = await fetch('/api/wallet', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            action: 'getProfile'
-          }),
-        });
-        
-        if (response.ok) {
-          const profileData = await response.json();
-          setFormData({
-            username: profileData.username || '',
-            bio: profileData.bio || '',
-            socialLinks: {
-              twitter: profileData.twitter_link || '',
-              telegram: profileData.telegram_link || '',
-            },
-          });
-          validateSocialLinks({
-            twitter: profileData.twitter_link || '',
-            telegram: profileData.telegram_link || '',
-          });
-        } else {
-          const errInfo = await parseApiError(response);
-          if (errInfo.status === 401 || errInfo.code === 'NOT_AUTHENTICATED') {
-            toast.error('Your session has expired. Please sign in.', { style: { backgroundColor: '#333', color: '#fff' } });
-            router.push('/login');
-            return;
-          }
-          toast.error(getFriendlyErrorMessage(errInfo.code, 'Failed to load profile'), {
-            description: errInfo.message || formatValidationDetails(errInfo.details),
-            style: { backgroundColor: '#333', color: '#fff' },
-          });
-        }
-      } catch (error) {
-        console.error('Error loading profile:', error);
-      } finally {
-        setProfileLoading(false);
-      }
-    };
-    
-    loadProfile();
-  }, [session?.user?.email]);
+     const loadProfile = async () => {
+       if (!session?.user?.email) return;
+       
+       setProfileLoading(true);
+       try {
+         const response = await fetch('/api/wallet', {
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json',
+           },
+           body: JSON.stringify({ 
+             action: 'getProfile'
+           }),
+         });
+         
+         if (response.ok) {
+           const profileData = await response.json();
+           setFormData({
+             username: profileData.username || '',
+             bio: profileData.bio || '',
+             socialLinks: {
+               twitter: profileData.twitter_link || '',
+               telegram: profileData.telegram_link || '',
+             },
+           });
+           validateSocialLinks({
+             twitter: profileData.twitter_link || '',
+             telegram: profileData.telegram_link || '',
+           });
+         } else {
+           const errInfo = await parseApiError(response);
+           if (errInfo.status === 401 || errInfo.code === 'NOT_AUTHENTICATED') {
+             toast.error('Your session has expired. Please sign in.', { style: { backgroundColor: '#333', color: '#fff' } });
+             router.push('/login');
+             return;
+           }
+           toast.error(getFriendlyErrorMessage(errInfo.code, 'Failed to load profile'), {
+             description: errInfo.message || formatValidationDetails(errInfo.details),
+             style: { backgroundColor: '#333', color: '#fff' },
+           });
+         }
+       } catch (error) {
+         console.error('Error loading profile:', error);
+       } finally {
+         setProfileLoading(false);
+       }
+     };
+     
+     loadProfile();
+  }, [session?.user?.email, router, validateSocialLinks]);
 
   // Handle wallet linked callback
   const handleWalletLinked = (walletAddress) => {

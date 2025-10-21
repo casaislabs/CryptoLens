@@ -1,13 +1,25 @@
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import dynamic from 'next/dynamic';
 import { useAccount, useDisconnect, useChainId, useSignMessage } from 'wagmi';
 import { useSession } from 'next-auth/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Wallet, Link, Unlink, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseApiError, getFriendlyErrorMessage, formatValidationDetails } from '@/lib/apiErrors';
+import Image from 'next/image';
+
+// Client-only RainbowKit ConnectButton.Custom wrapper
+const ConnectButtonCustom = dynamic(async () => {
+  const mod = await import('@rainbow-me/rainbowkit');
+  const C = mod.ConnectButton;
+  function CustomWrapper({ children }) {
+    return <C.Custom>{children}</C.Custom>;
+  }
+  CustomWrapper.displayName = 'ConnectButtonCustom';
+  return CustomWrapper;
+}, { ssr: false });
 
 export default function WalletConnection({ onWalletLinked }) {
   const { address, isConnected } = useAccount();
@@ -19,15 +31,9 @@ export default function WalletConnection({ onWalletLinked }) {
   const [isLinked, setIsLinked] = useState(false);
   const [linkedAddress, setLinkedAddress] = useState(null);
 
-  const toastDarkStyle = { backgroundColor: '#111', color: '#fff' };
+  const toastDarkStyle = useMemo(() => ({ backgroundColor: '#111', color: '#fff' }), []);
 
-  useEffect(() => {
-    if (session?.user?.id) {
-      checkWalletLink();
-    }
-  }, [session, address]);
-
-  const checkWalletLink = async () => {
+  const checkWalletLink = useCallback(async () => {
     if (!session?.user?.id) return;
 
     try {
@@ -50,7 +56,13 @@ export default function WalletConnection({ onWalletLinked }) {
     } catch (error) {
       console.error('Error checking wallet link:', error);
     }
-  };
+  }, [session?.user?.id, toastDarkStyle]);
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      checkWalletLink();
+    }
+  }, [session?.user?.id, address, checkWalletLink]);
 
   function buildSiweMessage({ domain, address, statement, uri, version, chainId, nonce, issuedAt, expiresAt }) {
     const header = `${domain} wants you to sign in with your Ethereum account:`;
@@ -277,7 +289,7 @@ export default function WalletConnection({ onWalletLinked }) {
 
         {/* RainbowKit connection button */}
         <div className="flex justify-center">
-          <ConnectButton.Custom>
+          <ConnectButtonCustom>
             {({
               account,
               chain,
@@ -343,9 +355,12 @@ export default function WalletConnection({ onWalletLinked }) {
                               }}
                             >
                               {chain.iconUrl && (
-                                <img
+                                <Image
                                   alt={chain.name ?? 'Chain icon'}
                                   src={chain.iconUrl}
+                                  width={12}
+                                  height={12}
+                                  unoptimized
                                   style={{ width: 12, height: 12 }}
                                 />
                               )}
@@ -371,7 +386,7 @@ export default function WalletConnection({ onWalletLinked }) {
                 </div>
               );
             }}
-          </ConnectButton.Custom>
+          </ConnectButtonCustom>
         </div>
 
         {/* Linking buttons */}

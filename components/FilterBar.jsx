@@ -57,7 +57,7 @@ export default function FilterBar({
       ...filters
     };
     onFiltersChange(allFilters);
-  }, [searchTerm, filters]);
+}, [searchTerm, filters, onFiltersChange]);
 
   // Handle filter changes
   const handleFilterChange = (filterType, value) => {
