@@ -6,6 +6,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Ensure these external packages are transpiled (ESM/CJS interop)
+  transpilePackages: [
+    '@vanilla-extract/sprinkles',
+    '@rainbow-me/rainbowkit',
+  ],
   // Disable cache for dynamic pages
   experimental: {
     staleTimes: {
