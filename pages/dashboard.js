@@ -239,7 +239,10 @@ export async function getServerSideProps(context) {
   }
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const proto = context.req.headers['x-forwarded-proto'] || 'http';
+    const host = context.req.headers['host'];
+    const inferred = host ? `${proto}://${host}` : null;
+    const baseUrl = process.env.NEXTAUTH_URL || inferred || "http://localhost:3000";
     const res = await fetch(`${baseUrl}/api/tokens/all`);
 
     if (!res.ok) {

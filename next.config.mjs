@@ -46,6 +46,11 @@ const nextConfig = {
   },
   webpack: (config) => {
     config.resolve.alias['@'] = path.resolve(__dirname, '.');
+    // Workaround for CommonJS/ESM interop issue in '@vanilla-extract/sprinkles/createUtils'
+    config.resolve.alias['@vanilla-extract/sprinkles/createUtils'] = path.resolve(
+      __dirname,
+      'lib/vendor/vanilla-extract-createUtils.js'
+    );
     return config;
   },
 };
