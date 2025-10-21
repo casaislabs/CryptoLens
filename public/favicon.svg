@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" role="img">
+  <defs>
+    <!-- Brand gradients -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0F13"/>
+      <stop offset="1" stop-color="#101722"/>
+    </linearGradient>
+    <radialGradient id="lensGlow" cx="28" cy="28" r="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7ff8ff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#7ff8ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="12" y1="12" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6EE7FF"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="coin" x1="20" y1="20" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1fb6ff"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect width="64" height="64" rx="12" fill="url(#bg)"/>
+
+  <!-- Subtle grid to evoke a dashboard feel (kept very light for small sizes) -->
+  <g opacity="0.06">
+    <path d="M12 20 H52 M12 32 H52 M12 44 H52" stroke="#ffffff" stroke-width="2"/>
+    <path d="M20 12 V52 M32 12 V52 M44 12 V52" stroke="#ffffff" stroke-width="2"/>
+  </g>
+
+  <!-- Lens glow -->
+  <circle cx="28" cy="28" r="16" fill="url(#lensGlow)"/>
+
+  <!-- Main lens ring -->
+  <circle cx="28" cy="28" r="14" fill="none" stroke="url(#ring)" stroke-width="4"/>
+  <!-- Inner ring for depth -->
+  <circle cx="28" cy="28" r="10" fill="none" stroke="#9FF5FF" stroke-opacity="0.7" stroke-width="2"/>
+
+  <!-- Hex token inside the lens (crypto motif) -->
+  <path d="M28 18 L34 21.5 L34 28.5 L28 32 L22 28.5 L22 21.5 Z"
+        fill="none" stroke="url(#coin)" stroke-width="3" stroke-linejoin="round"/>
+
+  <!-- Lens handle (magnifier) -->
+  <line x1="38" y1="38" x2="52" y2="52" stroke="url(#ring)" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Highlight cut for clarity at tiny sizes -->
+  <path d="M20 22 A8 8 0 0 1 24 18" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2" fill="none"/>
+</svg>
