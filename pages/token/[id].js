@@ -218,23 +218,22 @@ export default function TokenDetails({ token: initialToken, chartData: initialCh
   );
 }
 
-export async function getServerSideProps({ params }) {
+export async function getServerSideProps({ params, req }) {
   const { id } = params;
 
-  // Initial validation of the `id` parameter
   if (!id || typeof id !== "string" || id.trim() === "") {
-    return {
-      notFound: true, // Return 404 if `id` is not valid
-    };
+    return { notFound: true };
   }
 
   try {
-    // Call the backend endpoint to get token and chart data
-    const res = await fetch(`${process.env.NEXTAUTH_URL}/api/token/${id}`);
+    const proto = req?.headers['x-forwarded-proto'] || 'http';
+    const host = req?.headers['host'];
+    const inferred = host ? `${proto}://${host}` : null;
+    const baseUrl = process.env.NEXTAUTH_URL || inferred || 'http://localhost:3000';
+    const res = await fetch(`${baseUrl}/api/token/${id}`);
     if (!res.ok) {
       return { notFound: true };
     }
-
     const { token, chartData } = await res.json();
     return { props: { token, chartData } };
   } catch (error) {
