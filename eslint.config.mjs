@@ -24,8 +24,15 @@ const restrictClientSupabaseImport = {
     "no-restricted-imports": [
       "error",
       {
-        patterns: ["@/lib/supabase"],
-        message: "Do not import '@/lib/supabase' on the client. Use API endpoints.",
+        paths: [
+          {
+            name: "@/lib/supabase",
+            message:
+              "Do not import '@/lib/supabase' on the client. Use API endpoints.",
+          },
+        ],
+        // Optionally also block subpaths explicitly
+        // patterns: ["@/lib/supabase/*"],
       },
     ],
   },
