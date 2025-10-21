@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -230,7 +230,7 @@ export default function Profile() {
       <Head>
         <title>CryptoLens — Profile</title>
         <meta name="description" content="Manage your CryptoLens profile, link your wallet, and update preferences." />
-        <link rel="canonical" href="https://cryptolens.casaislabs.com/profile" />
+        <link rel="canonical" href="https://cryptlens.casaislabs.com/profile" />
       </Head>
       <AppHeader title="CryptoLens" />
       <div className="min-h-screen bg-gradient-to-b from-neutral-900 to-black text-gray-100 flex items-center justify-center p-8">

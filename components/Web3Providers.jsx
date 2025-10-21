@@ -2,7 +2,7 @@ import { SessionProvider } from "next-auth/react";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import { WagmiProvider, createConfig, http } from "wagmi";
-import { injected, walletConnect } from "wagmi/connectors";
+import { injected } from "wagmi/connectors";
 import { mainnet, polygon, optimism, arbitrum, base, sepolia } from "wagmi/chains";
 import { queryClientConfig } from "@/lib/web3Config";
 
@@ -35,7 +35,6 @@ const wagmiConfig = createConfig({
   },
   connectors: [
     injected(),
-    walletConnect({ projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "YOUR_PROJECT_ID" }),
   ],
   ssr: true,
 });
