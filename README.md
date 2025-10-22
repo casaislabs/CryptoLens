@@ -19,6 +19,7 @@
 - [Supabase Setup](#supabase-setup-tables-rpc-rls)
 - [Development](#development)
   - [Scripts](#scripts)
+- [Logging](#logging)
 - [API Reference](#api-reference)
 - [Authentication Flow](#authentication-flow)
 - [Price Cache](#price-cache)
@@ -115,6 +116,9 @@ REDIS_HOST=<redis_host>
 REDIS_PORT=<redis_port>
 REDIS_USERNAME=<redis_username>
 REDIS_PASSWORD=<redis_password>
+
+# Logging
+LOG_LEVEL=info
 ```
 
 ### How to obtain each field
@@ -168,6 +172,16 @@ Notes:
 - `npm run start` — Start production server
 - `npm run lint` — Run ESLint
 
+
+## Logging
+- Pino-only logging is used across server APIs; Sentry was removed.
+- View logs in development in the terminal; in production via your platform's stdout/logs.
+- Control verbosity with `LOG_LEVEL` (`debug`, `info`, `warn`, `error`). Default is `info`.
+- Per-request correlation via `requestId` from middleware; appears on API logs.
+- Core logger: `lib/logger.js` with robust `Error` serialization and child loggers per request.
+- Instrumented APIs: `pages/api/tokens/all.js` and `pages/api/auth/[...nextauth].js`.
+- Optional: install `pino-pretty` locally for human-readable dev output.
+
 ## API Reference
 - `GET /api/fetchTokens?ids=all|favorites|id1,id2,...` — Returns price snapshots.
 - `GET /api/token/[id]` — Returns detailed token data and 7-day chart (with fallbacks).
@@ -198,8 +212,8 @@ Notes:
 - Wallet: SIWE domain matches your production host; enable WalletConnect project in production.
 - Redis: Use `https://cloud.redis.io/`; verify TLS and credentials; set appropriate TTLs in `lib/priceCache.js`.
 - Rate limits: Configure upstream API rate limits and enable backoff logic.
-- Observability: Add monitoring (e.g., Vercel analytics, Sentry) and log dashboards.
-- Security headers: Consider CSP, X-Frame-Options, Referrer-Policy in `_document.js` or via platform.
+- Observability: Pino JSON logs; integrate platform log dashboards; optional `pino-pretty` in development.
+- Security headers: Globally enforced in `middleware.js` (CSP, HSTS in prod, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy). Review CSP for any external domains needed.
 - Next.js Images: Review `next.config.mjs` `images.remotePatterns` for allowed domains.
 - Backups: Store `.env.production` securely; rotate keys periodically.
 
@@ -215,6 +229,8 @@ Notes:
 - “Domain mismatch (SIWE)” → The SIWE domain must match `NEXTAUTH_URL`/host:
   - Dev: `http://localhost:3000`.
   - Prod: your actual domain.
+- “403 on mutating API from another origin” → CSRF checks `Origin`. Send from same-origin or avoid cookies for cross-domain.
+- “CORS preflight blocked cross-domain” → CORS is restricted to same-origin; ensure frontend and API share domain/port.
 
 ---
 
@@ -255,6 +271,11 @@ This project is intended as a base for a Web3 dashboard. Adapt and extend as nee
   - UI components: Shadcn (`components/ui/*`), Tailwind utility classes, Skeletons, and Sonner toasts.
   - Accessibility: improved headings, focus, alt text (e.g., `CryptoLens Logo`).
 - Security Notes:
+  - Global security headers via `middleware.js`: CSP (strict; dev permits `unsafe-eval`), HSTS (prod), `X-Content-Type-Options=nosniff`, `X-Frame-Options=DENY`, `Referrer-Policy=strict-origin-when-cross-origin`, and a restrictive `Permissions-Policy`.
+  - CSRF protection: mutating API methods (`POST/PUT/PATCH/DELETE`) require same-origin `Origin`. Cross-domain requests with cookies are rejected with 403.
+  - CORS: same-origin only; preflight `OPTIONS` handled with restricted headers and credentials.
+  - Payload limits: ~1MB enforced in middleware for mutating API requests.
+  - Cookies: wallet challenge cookie uses `SameSite=Strict`, `HttpOnly`, and `Secure` in production.
   - Distinct secrets: `NEXTAUTH_SECRET` should be different from `SUPABASE_JWT_SECRET`.
   - Server-only modules: `lib/supabase.js`, `lib/profile.js`, `lib/priceCache.js` throw if imported in browser.
   - Cookies: challenge cookie is HMAC-protected and time-bound.

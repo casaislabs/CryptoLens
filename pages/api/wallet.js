@@ -37,7 +37,7 @@ function hmacSign(input) {
   const b64 = createHmac('sha256', getHmacSecret()).update(input).digest('base64');
   return toBase64Url(b64);
 }
-function serializeCookie(name, value, { maxAge = CHALLENGE_TTL_SECONDS, path = '/', secure, httpOnly = true, sameSite = 'Lax' } = {}) {
+function serializeCookie(name, value, { maxAge = CHALLENGE_TTL_SECONDS, path = '/', secure, httpOnly = true, sameSite = 'Strict' } = {}) {
   const parts = [
     `${name}=${encodeURIComponent(value)}`,
     `Path=${path}`,

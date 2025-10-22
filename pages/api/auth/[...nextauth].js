@@ -3,6 +3,7 @@ import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { createHmac } from 'node:crypto';
 import { recoverMessageAddress } from 'viem';
+import { createLogger } from '@/lib/logger';
 
 function base64urlDecodeToString(b64) {
   const pad = 4 - (b64.length % 4);
@@ -74,6 +75,11 @@ function getDomainFromReq(req) {
  * Wrapper para NextAuth que permite acceder a req y res.
  */
 export default async function auth(req, res) {
+  let log = createLogger('api:auth');
+  const requestId = req.headers['x-request-id'] || req.headers['X-Request-Id'] || null;
+  if (requestId) log = log.child('request', { requestId });
+  log.info('Auth route received');
+
   const providers = [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -99,6 +105,7 @@ export default async function auth(req, res) {
       },
       async authorize(credentials, reqCtx) {
         const method = credentials?.method;
+        log.info('Authorize start', { method });
         const signature = credentials?.signature;
         const siweMessage = credentials?.siweMessage;
         if (!method) throw new Error('Missing method');
@@ -132,6 +139,7 @@ export default async function auth(req, res) {
         }
 
         const wallet = recovered.toLowerCase();
+        log.info('Authorize success', { wallet });
         const user = {
           id: `wallet:${wallet}`,
           name: `Wallet ${wallet.slice(2, 6)}`,
