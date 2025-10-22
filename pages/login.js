@@ -144,9 +144,10 @@ export default function LoginPage() {
       });
       if (!linkRes.ok) {
         const errInfo = await parseApiError(linkRes);
+        // If wallet is already linked to another account, proceed without linking
         if (errInfo.code === 'WALLET_TAKEN' || linkRes.status === 409) {
-          toast.error('This wallet is already linked to another account', { style: toastDarkStyle });
-          return false;
+          // Silent success: keep session and continue to dashboard
+          return true;
         }
         toast.error(getFriendlyErrorMessage(errInfo.code, 'Could not link wallet'), {
           description: errInfo.message?.slice(0, 200),
