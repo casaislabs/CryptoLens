@@ -1,28 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="CryptoLens Logo">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="CryptoLens Mark">
+  <title>CryptoLens — Brand Mark</title>
+  <desc>Brand mark aligned with globe: turquoise ring, subtle inner ring, central dot.</desc>
   <defs>
-    <linearGradient id="ring" x1="6" y1="6" x2="18" y2="18" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#6EE7FF"/>
-      <stop offset="1" stop-color="#8B5CF6"/>
-    </linearGradient>
-    <linearGradient id="coin" x1="8" y1="8" x2="14" y2="14" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#1fb6ff"/>
-      <stop offset="1" stop-color="#22d3ee"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="10" cy="10" r="6" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#7ff8ff" stop-opacity="0.35"/>
-      <stop offset="1" stop-color="#7ff8ff" stop-opacity="0"/>
+    <radialGradient id="glow" cx="12" cy="12" r="8" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
     </radialGradient>
   </defs>
-
-  <!-- Lens glow -->
-  <circle cx="10" cy="10" r="6" fill="url(#glow)"/>
-  <!-- Main ring -->
-  <circle cx="10" cy="10" r="6" fill="none" stroke="url(#ring)" stroke-width="2"/>
-  <!-- Inner ring -->
-  <circle cx="10" cy="10" r="4.5" fill="none" stroke="#9FF5FF" stroke-opacity="0.75" stroke-width="1"/>
-  <!-- Hex token motif -->
-  <path d="M10 6.8 L12.8 8.3 L12.8 11.3 L10 12.8 L7.2 11.3 L7.2 8.3 Z"
-        fill="none" stroke="url(#coin)" stroke-width="1.6" stroke-linejoin="round"/>
-  <!-- Handle -->
-  <line x1="13.5" y1="13.5" x2="20" y2="20" stroke="url(#ring)" stroke-width="2.4" stroke-linecap="round"/>
+  <!-- Subtle glow -->
+  <circle cx="12" cy="12" r="8" fill="url(#glow)"/>
+  <!-- Outer ring -->
+  <circle cx="12" cy="12" r="8" fill="none" stroke="#22d3ee" stroke-width="2"/>
+  <!-- Inner hint ring (low opacity) -->
+  <circle cx="12" cy="12" r="7" fill="none" stroke="#22d3ee" stroke-opacity="0.25" stroke-width="1"/>
+  <!-- Central dot -->
+  <circle cx="12" cy="12" r="4" fill="#22d3ee"/>
 </svg>

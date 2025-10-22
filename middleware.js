@@ -102,14 +102,20 @@ export async function middleware(req) {
 function applySecurityHeaders(res, currentOrigin) {
   const isProd = process.env.NODE_ENV === 'production';
 
-  // Content-Security-Policy
+  // Content-Security-Policy (connect-src derived from SUPABASE_URL)
+  const supabaseUrl = process.env.SUPABASE_URL || '';
+  let supabaseOrigin = '';
+  try { supabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : ''; } catch (_) { supabaseOrigin = ''; }
+  const connectSrc = ["'self'", "https://api.coingecko.com", "https://pro-api.coinmarketcap.com"];
+  if (supabaseOrigin) connectSrc.push(supabaseOrigin);
+
   const cspDirectives = [
     "default-src 'self'",
     isProd ? "script-src 'self'" : "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https://api.coingecko.com https://pro-api.coinmarketcap.com https://djfdrpmtjfzatoahfgqp.supabase.co",
+    `connect-src ${connectSrc.join(' ')}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -121,13 +127,13 @@ function applySecurityHeaders(res, currentOrigin) {
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.headers.set('Permissions-Policy', 'accelerometer=(), camera=(), microphone=(), geolocation=(), gyroscope=(), magnetometer=(), payment=(), usb=()');
 
-  // HSTS solo en prod
+  // HSTS only in production
   if (isProd) {
     res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   }
 
   // CORS para respuestas API (solo mismo origen)
-  // Si hay Origin igual a currentOrigin, reflejarlo; si no, no setear
+  // Si el Origin es igual a currentOrigin, reflejarlo; de lo contrario, no establecer
   if (res.headers.get('content-type')?.includes('application/json')) {
     const originSet = res.headers.get('Access-Control-Allow-Origin');
     if (!originSet && currentOrigin) {

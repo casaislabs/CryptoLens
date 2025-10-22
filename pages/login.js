@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/router";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useAccount, useChainId, useSignMessage } from 'wagmi';
@@ -47,7 +47,7 @@ export default function LoginPage() {
   const { signMessageAsync } = useSignMessage();
 
   // Consistent and accessible style for toasts (without changing UI/sonner)
-  const toastDarkStyle = { backgroundColor: "#111", color: "#fff" };
+  const toastDarkStyle = useMemo(() => ({ backgroundColor: "#111", color: "#fff" }), []);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 640);
@@ -69,7 +69,7 @@ export default function LoginPage() {
         style: toastDarkStyle,
       });
     }
-  }, [queryError, router]);
+  }, [queryError, toastDarkStyle]);
 
   const handleGoogleLogin = async () => {
     setLoading(true);

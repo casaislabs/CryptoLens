@@ -26,7 +26,7 @@ export default function Home() {
       </Head>
       <div className="text-center animate-fade-in">
         <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm mb-4">
-          <Image src="/logo.svg" width={28} height={28} alt="CryptoLens Logo" className="opacity-90" />
+          <Image src="/logo.svg" width={32} height={32} alt="CryptoLens Logo" className="opacity-90" />
           <span className="text-white font-semibold tracking-wide">CryptoLens</span>
         </div>
         <h1 className="text-6xl leading-[1.15] font-extrabold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-cyan-300 to-violet-400 tracking-tight pb-1">

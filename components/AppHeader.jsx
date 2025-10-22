@@ -17,7 +17,7 @@ export default function AppHeader({ title = "CryptoLens" }) {
           {/* Brand / Title */}
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="flex items-center gap-2" prefetch>
-              <Image src="/logo.svg" width={22} height={22} alt="CryptoLens Logo" className="opacity-90" />
+              <Image src="/logo.svg" width={24} height={24} alt="CryptoLens Logo" className="opacity-90" />
               {title ? (
                 <span className="text-sm sm:text-base font-semibold tracking-wide text-white">{title}</span>
               ) : null}

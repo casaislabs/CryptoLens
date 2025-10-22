@@ -98,7 +98,7 @@ function TokenCard({
           </Button>
         </div>
         
-        {/* Market Cap y Volumen */}
+        {/* Market Cap and Volume */}
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div>
             <p className="text-zinc-400">Market Cap</p>

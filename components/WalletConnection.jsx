@@ -1,7 +1,7 @@
 import dynamic from 'next/dynamic';
 import { useAccount, useDisconnect, useChainId, useSignMessage } from 'wagmi';
 import { useSession } from 'next-auth/react';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,11 +32,23 @@ export default function WalletConnection({ onWalletLinked }) {
   const [isLinking, setIsLinking] = useState(false);
   const [isLinked, setIsLinked] = useState(false);
   const [linkedAddress, setLinkedAddress] = useState(null);
+  const [isChecking, setIsChecking] = useState(false);
 
   const toastDarkStyle = useMemo(() => ({ backgroundColor: '#111', color: '#fff' }), []);
+  const CHECK_COOLDOWN_MS = 1500;
+  const checkCooldownRef = useRef(0);
+  const checkInFlightRef = useRef(false);
 
-  const checkWalletLink = useCallback(async () => {
-    if (!session?.user?.id) return;
+  const checkWalletLink = useCallback(async (immediate = false) => {
+    if (!session?.user?.id) return null;
+
+    const now = Date.now();
+    if (!immediate) {
+      if (checkInFlightRef.current) return null;
+      if (now - checkCooldownRef.current < CHECK_COOLDOWN_MS) return null;
+    }
+    checkInFlightRef.current = true;
+    setIsChecking(true);
 
     try {
       const response = await fetch('/api/wallet', {
@@ -48,23 +60,32 @@ export default function WalletConnection({ onWalletLinked }) {
         const data = await response.json();
         setIsLinked(data.isLinked);
         setLinkedAddress(data.walletAddress);
+        return data;
       } else {
         const errInfo = await parseApiError(response);
         toast.error(getFriendlyErrorMessage(errInfo.code, 'Could not verify wallet'), {
           description: errInfo.message || formatValidationDetails(errInfo.details) || 'Try again later.',
           style: toastDarkStyle,
         });
+        return null;
       }
     } catch (error) {
       log.error('Error checking wallet link', { error });
+      return null;
+    } finally {
+      checkInFlightRef.current = false;
+      checkCooldownRef.current = now;
+      setIsChecking(false);
     }
   }, [session?.user?.id, toastDarkStyle]);
 
+  // Avoid extra checks while linking; refresh once after link/unlink completes
   useEffect(() => {
-    if (session?.user?.id) {
-      checkWalletLink();
+    // Verify only when session exists and not linking
+    if (session?.user?.id && !isLinking) {
+      checkWalletLink(false);
     }
-  }, [session?.user?.id, address, checkWalletLink]);
+  }, [session?.user?.id, isLinking, checkWalletLink]);
 
   function buildSiweMessage({ domain, address, statement, uri, version, chainId, nonce, issuedAt, expiresAt }) {
     const header = `${domain} wants you to sign in with your Ethereum account:`;
@@ -103,62 +124,76 @@ export default function WalletConnection({ onWalletLinked }) {
   };
 
   const linkWithSiwe = async () => {
-    const chall = await requestChallenge('siwe');
-    const domain = chall.domain;
-    const nonce = chall.nonce;
-    const issuedAt = chall.issuedAt;
-    const expiresAt = chall.expiresAt;
-    const uri = chall.siwe?.uri || (typeof window !== 'undefined' ? window.location.origin : '');
-    const statement = chall.siwe?.statement || 'Sign to link your wallet to your account';
-    if (!address) throw new Error('No wallet address');
-    if (!chainId) throw new Error('No chainId');
+    try {
+      const chall = await requestChallenge('siwe');
+      const domain = chall.domain;
+      const nonce = chall.nonce;
+      const issuedAt = chall.issuedAt;
+      const expiresAt = chall.expiresAt;
+      const uri = chall.siwe?.uri || (typeof window !== 'undefined' ? window.location.origin : '');
+      const statement = chall.siwe?.statement || 'Sign to link your wallet to your account';
+      if (!address) throw new Error('No wallet address');
+      if (!chainId) throw new Error('No chainId');
 
-    const message = buildSiweMessage({
-      domain,
-      address,
-      statement,
-      uri,
-      version: chall.siwe?.version || '1',
-      chainId,
-      nonce,
-      issuedAt,
-      expiresAt,
-    });
+      const message = buildSiweMessage({
+        domain,
+        address,
+        statement,
+        uri,
+        version: chall.siwe?.version || '1',
+        chainId,
+        nonce,
+        issuedAt,
+        expiresAt,
+      });
 
-    const signature = await signMessageAsync({ message });
+      const signature = await signMessageAsync({ message });
 
-    const linkRes = await fetch('/api/wallet', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ action: 'link', method: 'siwe', siweMessage: message, signature }),
-    });
-    if (!linkRes.ok) {
-      const errInfo = await parseApiError(linkRes);
-      return { ok: false, code: errInfo.code || linkRes.status, message: errInfo.message };
+      const linkRes = await fetch('/api/wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'link', method: 'siwe', siweMessage: message, signature }),
+      });
+      if (!linkRes.ok) {
+        const errInfo = await parseApiError(linkRes);
+        return { ok: false, code: errInfo.code || linkRes.status, message: errInfo.message };
+      }
+      const json = await linkRes.json();
+      return { ok: true, data: json };
+    } catch (err) {
+      if (isUserRejectedError(err)) {
+        return { ok: false, code: 'SIGNATURE_REJECTED', message: 'User rejected the signature' };
+      }
+      return { ok: false, code: 'LINK_FAILED', message: err?.shortMessage || err?.message || 'Failed to link wallet' };
     }
-    const json = await linkRes.json();
-    return { ok: true, data: json };
   };
 
   const linkWithPersonalSign = async () => {
-    const chall = await requestChallenge('personal_sign');
-    const message = chall.message;
-    if (!message) throw new Error('No challenge message');
-    const signature = await signMessageAsync({ message });
+    try {
+      const chall = await requestChallenge('personal_sign');
+      const message = chall.message;
+      if (!message) throw new Error('No challenge message');
+      const signature = await signMessageAsync({ message });
 
-    const linkRes = await fetch('/api/wallet', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ action: 'link', method: 'personal_sign', signature }),
-    });
-    if (!linkRes.ok) {
-      const errInfo = await parseApiError(linkRes);
-      return { ok: false, code: errInfo.code || linkRes.status, message: errInfo.message };
+      const linkRes = await fetch('/api/wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'link', method: 'personal_sign', signature }),
+      });
+      if (!linkRes.ok) {
+        const errInfo = await parseApiError(linkRes);
+        return { ok: false, code: errInfo.code || linkRes.status, message: errInfo.message };
+      }
+      const json = await linkRes.json();
+      return { ok: true, data: json };
+    } catch (err) {
+      if (isUserRejectedError(err)) {
+        return { ok: false, code: 'SIGNATURE_REJECTED', message: 'User rejected the signature' };
+      }
+      return { ok: false, code: 'LINK_FAILED', message: err?.shortMessage || err?.message || 'Failed to link wallet' };
     }
-    const json = await linkRes.json();
-    return { ok: true, data: json };
   };
 
   const linkWallet = async () => {
@@ -168,8 +203,8 @@ export default function WalletConnection({ onWalletLinked }) {
     }
     setIsLinking(true);
     try {
-      await checkWalletLink();
-      if (isLinked) {
+      const status = await checkWalletLink(true);
+      if (status?.isLinked) {
         toast.info('This wallet is already linked to your account', { style: toastDarkStyle });
         return;
       }
@@ -180,7 +215,7 @@ export default function WalletConnection({ onWalletLinked }) {
           toast.error('This wallet is already linked to another account', { style: toastDarkStyle });
           return;
         }
-        if (isUserRejectedError({ message: r1.message })) {
+        if (r1.code === 'SIGNATURE_REJECTED') {
           toast.info('Signature rejected', { description: 'Wallet was not linked.', style: toastDarkStyle });
           return;
         }
@@ -191,6 +226,10 @@ export default function WalletConnection({ onWalletLinked }) {
             toast.error('This wallet is already linked to another account', { style: toastDarkStyle });
             return;
           }
+          if (r2.code === 'SIGNATURE_REJECTED') {
+            toast.info('Signature rejected', { description: 'Wallet was not linked.', style: toastDarkStyle });
+            return;
+          }
           toast.error('Could not link wallet', { description: String(r2.message || '').slice(0, 200) || 'Please try again later.', style: toastDarkStyle });
           return;
         }
@@ -198,6 +237,7 @@ export default function WalletConnection({ onWalletLinked }) {
         setLinkedAddress(r2.data.walletAddress || address);
         toast.success('Wallet linked successfully', { style: toastDarkStyle });
         onWalletLinked?.(r2.data.walletAddress || address);
+        await checkWalletLink(true);
         return;
       }
 
@@ -205,6 +245,11 @@ export default function WalletConnection({ onWalletLinked }) {
       setLinkedAddress(r1.data.walletAddress || address);
       toast.success('Wallet linked successfully', { style: toastDarkStyle });
       onWalletLinked?.(r1.data.walletAddress || address);
+      await checkWalletLink(true);
+    } catch (err) {
+      const unexpected = err?.shortMessage || err?.message || 'Unexpected error during wallet linking';
+      toast.error('Could not link wallet', { description: unexpected, style: toastDarkStyle });
+      log.error('Link wallet unexpected error', { error: err });
     } finally {
       setIsLinking(false);
     }
@@ -224,6 +269,7 @@ export default function WalletConnection({ onWalletLinked }) {
         setLinkedAddress(null);
         disconnect();
         toast.success('Wallet unlinked', { style: toastDarkStyle });
+        await checkWalletLink(true);
       } else {
         const errInfo = await parseApiError(response);
         if (errInfo.status === 401 || errInfo.code === 'NOT_AUTHENTICATED') {
@@ -261,6 +307,11 @@ export default function WalletConnection({ onWalletLinked }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {isChecking && (
+          <div className="flex justify-center">
+            <Badge variant="secondary">Verifying…</Badge>
+          </div>
+        )}
         {/* Linked wallet status */}
         {isLinked && linkedAddress && (
           <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
@@ -384,7 +435,7 @@ export default function WalletConnection({ onWalletLinked }) {
             {!isLinked ? (
               <Button
                 onClick={linkWallet}
-                disabled={isLinking}
+                disabled={isLinking || isChecking}
                 className="w-full"
                 variant="default"
               >
@@ -394,7 +445,7 @@ export default function WalletConnection({ onWalletLinked }) {
             ) : (
               <Button
                 onClick={unlinkWallet}
-                disabled={isLinking}
+                disabled={isLinking || isChecking}
                 className="w-full"
                 variant="destructive"
               >

@@ -89,6 +89,9 @@ export default async function handler(req, res) {
               market_data: {
                 current_price: { usd: coin.quote.USD.price },
                 price_change_percentage_24h: coin.quote.USD.percent_change_24h,
+                market_cap: { usd: coin.quote.USD.market_cap },
+                total_volume: { usd: coin.quote.USD.volume_24h },
+                market_cap_rank: coin.cmc_rank,
               },
               image: {
                 large: `https://s2.coinmarketcap.com/static/img/coins/64x64/${coin.id}.png`,
