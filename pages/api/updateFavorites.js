@@ -52,6 +52,20 @@ async function updateUserFavorites(supabaseClient, userId, favorites) {
   }
 }
 
+function mapSupabaseErrorToHttp(error) {
+  const status = error?.status;
+  const msg = String(error?.message || '').toLowerCase();
+  // Auth/JWT issues
+  if (status === 401 || msg.includes('jwt') || msg.includes('unauthorized')) {
+    return { http: 401, code: 'NOT_AUTHENTICATED', message: 'Supabase auth failed. Check SUPABASE_JWT_SECRET and JWT setup.' };
+  }
+  // RLS / permissions
+  if (status === 403 || msg.includes('permission denied') || msg.includes('forbidden')) {
+    return { http: 403, code: 'FORBIDDEN', message: 'Operation not allowed by RLS policies for this user.' };
+  }
+  return { http: 500, code: 'INTERNAL_ERROR', message: 'Failed to process request' };
+}
+
 export default async function handler(req, res) {
   setNoStore(res);
 
@@ -101,6 +115,7 @@ export default async function handler(req, res) {
     return sendError(res, 405, 'METHOD_NOT_ALLOWED', 'Method not allowed');
   } catch (error) {
     log.error('updateFavorites API error', { error });
-    return sendError(res, 500, 'INTERNAL_ERROR', 'Failed to process request');
+    const mapped = mapSupabaseErrorToHttp(error);
+    return sendError(res, mapped.http, mapped.code, mapped.message);
   }
 }

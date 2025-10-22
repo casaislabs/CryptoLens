@@ -106,12 +106,30 @@ function applySecurityHeaders(res, currentOrigin) {
   const supabaseUrl = process.env.SUPABASE_URL || '';
   let supabaseOrigin = '';
   try { supabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : ''; } catch (_) { supabaseOrigin = ''; }
-  const connectSrc = ["'self'", "https://api.coingecko.com", "https://pro-api.coinmarketcap.com"];
+  const extraConnect = (process.env.CSP_CONNECT_EXTRA || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+  const connectSrc = [
+    "'self'",
+    "https://api.coingecko.com",
+    "https://pro-api.coinmarketcap.com",
+    "https://api.web3modal.org",
+    "https://pulse.walletconnect.org",
+    "https://rpc.walletconnect.com",
+    "https://*.walletconnect.com",
+    "https://*.walletconnect.org",
+    "https://*.web3modal.org",
+    "wss:"
+  ];
   if (supabaseOrigin) connectSrc.push(supabaseOrigin);
+  if (extraConnect.length) connectSrc.push(...extraConnect);
 
   const cspDirectives = [
     "default-src 'self'",
-    isProd ? "script-src 'self'" : "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'",
+    isProd
+      ? "script-src 'self' 'unsafe-inline'"
+      : "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
