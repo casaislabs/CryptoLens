@@ -22,6 +22,7 @@ function TokenCard({
   const isFav = Array.isArray(favorites) && (favorites.includes(id) || favorites.includes(symbol));
 
   const toggleFavorite = async (e) => {
+    e.preventDefault();
     e.stopPropagation();
 
     if (pendingFavorite) return;
@@ -50,7 +51,7 @@ function TokenCard({
     <Link
       href={`/token/${id}`}
       className={"relative w-full max-w-xs p-5 rounded-2xl bg-white/5 backdrop-blur border border-white/10 shadow-md transition-all duration-300 cursor-pointer group hover:shadow-xl hover:scale-[1.015]"}
-      prefetch={false}
+      prefetch={true}
     >
       <div className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden border border-white/20">
@@ -91,10 +92,7 @@ function TokenCard({
             size="sm"
             variant={isFav ? "destructive" : "secondary"}
             disabled={pendingFavorite}
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleFavorite(e);
-            }}
+            onClick={toggleFavorite}
           >
             {pendingFavorite ? "…" : isFav ? "★" : "☆"}
           </Button>

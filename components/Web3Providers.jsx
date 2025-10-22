@@ -38,19 +38,24 @@ const ssrWagmiConfig = createConfig({
 export default function Web3Providers({ session, children }) {
   const [clientWagmiConfig, setClientWagmiConfig] = useState(null);
 
-  // Build full Wagmi config with connectors in client to avoid SSR ESM issues
+  // Build full Wagmi config with RainbowKit connectors in client
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const { injected, walletConnect } = await import("wagmi/connectors");
+        // Use RainbowKit's connectors so the modal can list wallets properly
+        const { getDefaultWallets } = await import("@rainbow-me/rainbowkit");
+        const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+        const { connectors } = getDefaultWallets({
+          appName: "CryptoLens",
+          projectId: projectId || "",
+          chains: baseChains,
+        });
+
         const cfg = createConfig({
           chains: baseChains,
           transports: baseTransports,
-          connectors: [
-            injected(),
-            walletConnect({ projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "YOUR_PROJECT_ID" }),
-          ],
+          connectors,
           ssr: true,
         });
         if (mounted) setClientWagmiConfig(cfg);

@@ -50,14 +50,14 @@ export default function FilterBar({
     { value: "name", label: "Name" }
   ];
 
-  // Effect to notify filter changes
+  // Effect to notify filter changes (do not depend on handler to avoid loops)
   useEffect(() => {
     const allFilters = {
       searchTerm: searchTerm.trim(),
       ...filters
     };
     onFiltersChange(allFilters);
-}, [searchTerm, filters, onFiltersChange]);
+  }, [searchTerm, filters]);
 
   // Handle filter changes
   const handleFilterChange = (filterType, value) => {

@@ -130,6 +130,50 @@ export default function LoginPage() {
     return res.json();
   };
 
+  const linkAfterLogin = async () => {
+    try {
+      const chall = await requestChallenge('siwe');
+      const msg = buildSiweMessage({
+        domain: chall.domain,
+        address,
+        statement: chall.siwe?.statement || 'Sign to link your wallet to your account',
+        uri: chall.siwe?.uri || (typeof window !== 'undefined' ? window.location.origin : ''),
+        version: chall.siwe?.version || '1',
+        chainId,
+        nonce: chall.nonce,
+        issuedAt: chall.issuedAt,
+        expiresAt: chall.expiresAt,
+      });
+      const sig = await signMessageAsync({ message: msg });
+      const linkRes = await fetch('/api/wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'link', method: 'siwe', siweMessage: msg, signature: sig }),
+      });
+      if (!linkRes.ok) {
+        const errInfo = await parseApiError(linkRes);
+        if (errInfo.code === 'WALLET_TAKEN' || linkRes.status === 409) {
+          toast.error('This wallet is already linked to another account', { style: toastDarkStyle });
+          return false;
+        }
+        toast.error(getFriendlyErrorMessage(errInfo.code, 'Could not link wallet'), {
+          description: errInfo.message?.slice(0, 200),
+          style: toastDarkStyle,
+        });
+        return false;
+      }
+      return true;
+    } catch (e) {
+      if (isUserRejectedError(e)) {
+        toast.info('Signature rejected', { description: 'Wallet was not linked.', style: toastDarkStyle });
+        return false;
+      }
+      toast.error('Could not link wallet', { description: e?.message?.slice(0, 200) || 'Try again later.', style: toastDarkStyle });
+      return false;
+    }
+  };
+
   const handleWalletLogin = async () => {
     try {
       if (!isConnected) {
@@ -156,13 +200,27 @@ export default function LoginPage() {
       });
 
       const signature = await signMessageAsync({ message });
-      await signIn('ethereum', {
-        redirect: true,
-        callbackUrl: '/dashboard',
+      const res = await signIn('ethereum', {
+        redirect: false,
         method: 'siwe',
         siweMessage: message,
         signature,
       });
+      if (res?.ok) {
+        try {
+          const linked = await linkAfterLogin();
+          if (linked) {
+            router.replace('/dashboard');
+          }
+          return;
+        } catch (e) {
+          console.error('Post-login link failed:', e);
+          toast.error('Could not link wallet', { description: e.message?.slice(0,200) || 'Try again later.', style: toastDarkStyle });
+          await signOut({ redirect: false });
+          return;
+        }
+      }
+      throw new Error(res?.error || 'Sign-in failed');
     } catch (err) {
       if (isUserRejectedError(err)) {
         console.info('User rejected signature (SIWE).');
@@ -173,12 +231,26 @@ export default function LoginPage() {
       try {
         const chall2 = await requestChallenge('personal_sign');
         const signature2 = await signMessageAsync({ message: chall2.message });
-        await signIn('ethereum', {
-          redirect: true,
-          callbackUrl: '/dashboard',
+        const res2 = await signIn('ethereum', {
+          redirect: false,
           method: 'personal_sign',
           signature: signature2,
         });
+        if (res2?.ok) {
+          try {
+            const linked2 = await linkAfterLogin();
+            if (linked2) {
+              router.replace('/dashboard');
+            }
+            return;
+          } catch (e2) {
+            console.error('Post-login link failed:', e2);
+            toast.error('Could not link wallet', { description: e2.message?.slice(0,200) || 'Try again later.', style: toastDarkStyle });
+            await signOut({ redirect: false });
+            return;
+          }
+        }
+        throw new Error(res2?.error || 'Sign-in failed');
       } catch (err2) {
         if (isUserRejectedError(err2)) {
           console.info('User rejected signature (personal_sign).');

@@ -36,7 +36,6 @@ export default function Profile() {
     }
   };
 
-  // Normalize social links before sending to the backend
   // Normalize social links before sending to the backend (stable identity)
   const normalizeSocialLink = useCallback((platform, value) => {
      if (!value) return null;
@@ -64,7 +63,6 @@ export default function Profile() {
      return value;
   }, []);
   
-  // Validate social links
   // Validate social links (stable identity)
   const validateSocialLinks = useCallback((links) => {
      const twitterValid = /^https:\/\/(www\.)?(twitter\.com|x\.com)\/[a-zA-Z0-9_]{1,15}$/.test(
@@ -97,11 +95,6 @@ export default function Profile() {
           twitter: normalizeSocialLink("twitter", formData.socialLinks.twitter),
           telegram: normalizeSocialLink("telegram", formData.socialLinks.telegram),
         };
-  
-        console.log("Sending data to backend:", {
-          ...formData,
-          socialLinks: normalizedLinks,
-        });
   
         const response = await fetch("/api/updateProfile", {
           method: "POST",
@@ -155,8 +148,7 @@ export default function Profile() {
   // Load profile data from database
   useEffect(() => {
      const loadProfile = async () => {
-       if (!session?.user?.email) return;
-       
+       if (!session?.user?.id) return;
        setProfileLoading(true);
        try {
          const response = await fetch('/api/wallet', {
@@ -203,7 +195,7 @@ export default function Profile() {
      };
      
      loadProfile();
-  }, [session?.user?.email, router, validateSocialLinks]);
+  }, [session?.user?.id, router, validateSocialLinks]);
 
   // Handle wallet linked callback
   const handleWalletLinked = (walletAddress) => {
@@ -217,7 +209,7 @@ export default function Profile() {
   };
 
   // Redirect if the session is not authenticated or if loading
-  if (status === "loading" || !session?.user?.email) {
+  if (status === "loading" || !session?.user?.id) {
     return <p className="p-8 text-gray-100">Loading profile...</p>;
   }
 

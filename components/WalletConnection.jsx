@@ -133,12 +133,10 @@ export default function WalletConnection({ onWalletLinked }) {
     });
     if (!linkRes.ok) {
       const errInfo = await parseApiError(linkRes);
-      const err = new Error(errInfo.message || 'Link (siwe) failed');
-      err.code = errInfo.code || linkRes.status;
-      err.info = errInfo;
-      throw err;
+      return { ok: false, code: errInfo.code || linkRes.status, message: errInfo.message };
     }
-    return linkRes.json();
+    const json = await linkRes.json();
+    return { ok: true, data: json };
   };
 
   const linkWithPersonalSign = async () => {
@@ -155,12 +153,10 @@ export default function WalletConnection({ onWalletLinked }) {
     });
     if (!linkRes.ok) {
       const errInfo = await parseApiError(linkRes);
-      const err = new Error(errInfo.message || 'Link (personal_sign) failed');
-      err.code = errInfo.code || linkRes.status;
-      err.info = errInfo;
-      throw err;
+      return { ok: false, code: errInfo.code || linkRes.status, message: errInfo.message };
     }
-    return linkRes.json();
+    const json = await linkRes.json();
+    return { ok: true, data: json };
   };
 
   const linkWallet = async () => {
@@ -170,52 +166,43 @@ export default function WalletConnection({ onWalletLinked }) {
     }
     setIsLinking(true);
     try {
-      // Check if the wallet is already linked to the profile
       await checkWalletLink();
       if (isLinked) {
         toast.info('This wallet is already linked to your account', { style: toastDarkStyle });
         return;
       }
 
-      // Attempt SIWE by default
-      const data = await linkWithSiwe();
-      setIsLinked(true);
-      setLinkedAddress(data.walletAddress || address);
-      toast.success('Wallet linked successfully', { style: toastDarkStyle });
-      onWalletLinked?.(data.walletAddress || address);
-    } catch (err) {
-      // Treat 409 as a business conflict: show toast and stop
-      if (err?.code === 409 || /WALLET_TAKEN/i.test(String(err?.message))) {
-        toast.error('This wallet is already linked to another account', { style: toastDarkStyle });
-        return;
-      }
-      // Signature rejected: no fallback, inform the user and exit
-      if (isUserRejectedError(err)) {
-        toast.info('Signature rejected', { description: 'Wallet was not linked.', style: toastDarkStyle });
-        return;
-      }
-      console.warn('SIWE linking failed, attempting personal_sign fallback:', err);
-      try {
-        const data2 = await linkWithPersonalSign();
-        setIsLinked(true);
-        setLinkedAddress(data2.walletAddress || address);
-        toast.success('Wallet linked successfully', { style: toastDarkStyle });
-        onWalletLinked?.(data2.walletAddress || address);
-      } catch (err2) {
-        if (err2?.code === 409 || /WALLET_TAKEN/i.test(String(err2?.message))) {
+      const r1 = await linkWithSiwe();
+      if (!r1.ok) {
+        if (r1.code === 'WALLET_TAKEN' || r1.code === 409) {
           toast.error('This wallet is already linked to another account', { style: toastDarkStyle });
           return;
         }
-        if (isUserRejectedError(err2)) {
+        if (isUserRejectedError({ message: r1.message })) {
           toast.info('Signature rejected', { description: 'Wallet was not linked.', style: toastDarkStyle });
           return;
         }
-        console.error('Linking failed:', err2);
-        toast.error('Could not link wallet', {
-          description: String(err2?.message || '').slice(0, 200) || 'Please try again later.',
-          style: toastDarkStyle,
-        });
+        // Try fallback
+        const r2 = await linkWithPersonalSign();
+        if (!r2.ok) {
+          if (r2.code === 'WALLET_TAKEN' || r2.code === 409) {
+            toast.error('This wallet is already linked to another account', { style: toastDarkStyle });
+            return;
+          }
+          toast.error('Could not link wallet', { description: String(r2.message || '').slice(0, 200) || 'Please try again later.', style: toastDarkStyle });
+          return;
+        }
+        setIsLinked(true);
+        setLinkedAddress(r2.data.walletAddress || address);
+        toast.success('Wallet linked successfully', { style: toastDarkStyle });
+        onWalletLinked?.(r2.data.walletAddress || address);
+        return;
       }
+
+      setIsLinked(true);
+      setLinkedAddress(r1.data.walletAddress || address);
+      toast.success('Wallet linked successfully', { style: toastDarkStyle });
+      onWalletLinked?.(r1.data.walletAddress || address);
     } finally {
       setIsLinking(false);
     }

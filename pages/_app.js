@@ -4,25 +4,8 @@ import '@rainbow-me/rainbowkit/styles.css';
 import { Toaster } from "@/components/ui/sonner";
 import Head from "next/head";
 import Web3Providers from "@/components/Web3Providers";
-import { useEffect } from "react";
-import { useRouter } from "next/router";
 
 export default function App({ Component, pageProps }) {
-  const router = useRouter();
-
-  useEffect(() => {
-    const handleRouteChangeError = (err, url) => {
-      if (err?.cancelled) return; // ignore aborted prefetch
-      // Fallback duro si el cambio de ruta falla
-      if (typeof window !== 'undefined') window.location.assign(url);
-    };
-
-    router.events.on('routeChangeError', handleRouteChangeError);
-    return () => {
-      router.events.off('routeChangeError', handleRouteChangeError);
-    };
-  }, [router.events]);
-
   return (
     <Web3Providers session={pageProps.session}>
       <Head>
@@ -44,7 +27,7 @@ export default function App({ Component, pageProps }) {
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="canonical" href="https://cryptolens.casaislabs.com/" />
       </Head>
-      <Component key={router.asPath} {...pageProps} />
+      <Component {...pageProps} />
       <Toaster />
     </Web3Providers>
   );

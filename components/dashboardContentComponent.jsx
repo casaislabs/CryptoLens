@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, Suspense } from "react";
+import React, { useEffect, useState, useMemo, Suspense, useCallback } from "react";
 import dynamic from "next/dynamic";
 import TokenCard from "@/components/TokenCard";
 import FilterBar from "@/components/FilterBar";
@@ -180,10 +180,10 @@ export default function DashboardContentComponent({
     return filterTokens(favoriteTokens, filters);
   }, [favoriteTokens, filters]);
 
-  // Handle changes in filters
-  const handleFiltersChange = (newFilters) => {
+  // Handle changes in filters (stable reference)
+  const handleFiltersChange = useCallback((newFilters) => {
     setFilters(newFilters);
-  };
+  }, []);
 
   if (mode === "simple") {
     // Simple mode: show only "Hello" and the first top token

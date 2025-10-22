@@ -21,7 +21,7 @@ async function getUserFavorites(supabaseClient, userId) {
 
 // Function to update a user's favorites in Supabase
 async function updateUserFavorites(supabaseClient, userId, favorites) {
-  // Deduplicate and normalize IDs in case they are repeated or case variations
+  // dedupe y normaliza ids por si llegan repetidos/case
   const unique = Array.from(new Set((favorites || []).map((id) => String(id).toLowerCase())));
 
   // Try transactional RPC if available
