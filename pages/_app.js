@@ -44,7 +44,7 @@ export default function App({ Component, pageProps }) {
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="canonical" href="https://cryptolens.casaislabs.com/" />
       </Head>
-      <Component {...pageProps} />
+      <Component key={router.asPath} {...pageProps} />
       <Toaster />
     </Web3Providers>
   );
