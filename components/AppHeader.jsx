@@ -7,6 +7,12 @@ export default function AppHeader({ title = "CryptoLens" }) {
   const { data: session } = useSession();
 
   const handleSignOut = async () => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('favorites');
+        localStorage.removeItem('lastFavoriteTokens');
+      }
+    } catch (_) { /* noop */ }
     await signOut({ callbackUrl: '/' });
   };
 
