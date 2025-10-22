@@ -112,15 +112,8 @@ function applySecurityHeaders(res, currentOrigin) {
     .filter(Boolean);
   const connectSrc = [
     "'self'",
-    "https://api.coingecko.com",
-    "https://pro-api.coinmarketcap.com",
-    "https://api.web3modal.org",
-    "https://pulse.walletconnect.org",
-    "https://rpc.walletconnect.com",
-    "https://*.walletconnect.com",
-    "https://*.walletconnect.org",
-    "https://*.web3modal.org",
-    "wss:"
+    "https:",
+    "wss:",
   ];
   if (supabaseOrigin) connectSrc.push(supabaseOrigin);
   if (extraConnect.length) connectSrc.push(...extraConnect);
