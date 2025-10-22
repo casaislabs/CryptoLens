@@ -354,3 +354,16 @@ export default function Profile() {
     </>
   );
 }
+
+export async function getServerSideProps(context) {
+  const { getSession } = await import("next-auth/react");
+  const session = await getSession(context);
+
+  if (!session) {
+    return {
+      redirect: { destination: "/login", permanent: false },
+    };
+  }
+
+  return { props: { session } };
+}
