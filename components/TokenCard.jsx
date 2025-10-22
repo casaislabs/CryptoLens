@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/router";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner"; // Import toast library
 
@@ -17,7 +17,6 @@ function TokenCard({
   updateFavorites,
   favorites = [] // Default value: empty array
 }) {
-  const router = useRouter();
   const [navigating, setNavigating] = useState(false);
   const [pendingFavorite, setPendingFavorite] = useState(false);
 
@@ -54,13 +53,11 @@ function TokenCard({
     toast("Loading token details...", {
       style: { backgroundColor: "#333", color: "#fff" },
     });
-    router.push(`/token/${id}`).finally(() => {
-      setNavigating(false);
-    });
   };
 
   return (
-    <div
+    <Link
+      href={`/token/${id}`}
       onClick={handleClick}
       aria-busy={navigating}
       className={`relative w-full max-w-xs p-5 rounded-2xl bg-white/5 backdrop-blur border border-white/10 shadow-md transition-all duration-300 cursor-pointer group ${navigating ? 'pointer-events-none opacity-60' : 'hover:shadow-xl hover:scale-[1.015]'}`}
@@ -139,7 +136,7 @@ function TokenCard({
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
