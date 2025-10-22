@@ -7,6 +7,8 @@ import { setNoStore, sendError, ensureMethod } from '@/lib/http';
 import { WalletBody, parseOrThrow } from '@/lib/validation';
 import { createHmac, randomBytes } from 'node:crypto';
 import { recoverMessageAddress, isAddress } from 'viem';
+import { createLogger } from '@/lib/logger';
+let log = createLogger('api:wallet');
 
 // Valid Ethereum address format (regex used in zod as well)
 const isValidEthereumAddress = (address) => /^0x[a-fA-F0-9]{40}$/.test(address);
@@ -129,38 +131,41 @@ export default async function handler(req, res) {
   setNoStore(res);
 
   try {
-    let body;
-    try {
-      body = parseOrThrow(WalletBody, req.body);
-    } catch (e) {
-      if (e.name === 'ValidationError') {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid wallet request', e.details);
-      }
-      throw e;
-    }
+    const requestId = req.headers['x-request-id'] || null;
+     let body;
+     try {
+       body = parseOrThrow(WalletBody, req.body);
+     } catch (e) {
+       if (e.name === 'ValidationError') {
+         return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid wallet request', e.details);
+       }
+       throw e;
+     }
 
-    const action = body.action;
+     const action = body.action;
 
-    // Allow unauthenticated challenge issuance (for wallet sign-in)
-    if (action === 'challenge') {
-      const method = body.method;
-      if (!method) return sendError(res, 400, 'INVALID_METHOD', 'method is required');
-      // Try to read token, but do not require it
-      const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET }).catch(() => null);
-      const userId = token?.id || null;
-      return await handleChallenge(req, res, userId, method);
-    }
+     // Allow unauthenticated challenge issuance (for wallet sign-in)
+     if (action === 'challenge') {
+       const method = body.method;
+       if (!method) return sendError(res, 400, 'INVALID_METHOD', 'method is required');
+       // Try to read token, but do not require it
+       const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET }).catch(() => null);
+      log = log.child('request', { requestId, userId: token?.id || null });
+       const userId = token?.id || null;
+       return await handleChallenge(req, res, userId, method);
+     }
 
-    // From here on, actions require authentication
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    if (!token?.id) {
-      return sendError(res, 401, 'NOT_AUTHENTICATED', 'Not authenticated');
-    }
-    const userId = token.id;
-
-    // Create JWS (3-part) for Supabase
-    const jws = makeSupabaseJwsFromToken(token);
-    const supabaseClient = createSupabaseClientWithJwt(jws);
+     // From here on, actions require authentication
+     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+     if (!token?.id) {
+       return sendError(res, 401, 'NOT_AUTHENTICATED', 'Not authenticated');
+     }
+     const userId = token.id;
+    log = log.child('request', { requestId, userId });
+ 
+     // Create JWS (3-part) for Supabase
+     const jws = makeSupabaseJwsFromToken(token);
+     const supabaseClient = createSupabaseClientWithJwt(jws);
 
     // JIT profile creation if not exists
     await ensureUserProfile(supabaseClient, token);
@@ -171,6 +176,21 @@ export default async function handler(req, res) {
       case 'link': {
         const method = body.method;
         if (!method) return sendError(res, 400, 'INVALID_METHOD', 'method is required');
+
+        // Session-based linking: trust verified wallet from NextAuth token (no second signature)
+        if (method === 'session') {
+          const walletAddressFromToken = (token?.walletAddress || '').toLowerCase();
+          if (!walletAddressFromToken) {
+            return sendError(res, 400, 'MISSING_WALLET', 'No wallet in session');
+          }
+          if (!isValidEthereumAddress(walletAddressFromToken)) {
+            return sendError(res, 400, 'INVALID_WALLET', 'Recovered invalid Ethereum address');
+          }
+          const result = await handleLink(supabaseClient, userId, walletAddressFromToken, res);
+          clearChallengeCookie(res);
+          return result;
+        }
+
         const chall = readChallengeCookie(req);
         if (!chall.ok) {
           return sendError(res, 400, 'CHALLENGE_INVALID', `Challenge not valid: ${chall.code || 'unknown'}`);
@@ -247,8 +267,8 @@ export default async function handler(req, res) {
         return sendError(res, 400, 'INVALID_ACTION', 'Invalid action');
     }
   } catch (error) {
-    console.error('Wallet API error:', error);
-    return sendError(res, 500, 'INTERNAL_ERROR', 'Internal server error');
+    log.error('Wallet API error', { error });
+     return sendError(res, 500, 'INTERNAL_ERROR', 'Internal server error');
   }
 }
 
@@ -261,8 +281,8 @@ async function handleCheck(supabaseClient, userId, res) {
     .maybeSingle();
 
   if (error) {
-    console.error('Error checking wallet:', error);
-    return sendError(res, 500, 'DB_ERROR', 'Database error');
+  log.error('Error checking wallet', { error });
+     return sendError(res, 500, 'DB_ERROR', 'Database error');
   }
 
   // If the user does not exist, return default values
@@ -293,8 +313,8 @@ async function handleLink(supabaseClient, userId, walletAddress, res) {
     .maybeSingle();
 
   if (checkError) {
-    console.error('Error checking existing wallet:', checkError);
-    return sendError(res, 500, 'DB_ERROR', 'Database error');
+    log.error('Error checking existing wallet', { error: checkError });
+     return sendError(res, 500, 'DB_ERROR', 'Database error');
   }
 
   if (existingWallet && existingWallet.user_id !== userId) {
@@ -309,8 +329,8 @@ async function handleLink(supabaseClient, userId, walletAddress, res) {
     .maybeSingle();
 
   if (userCheckError) {
-    console.error('Error checking user existence:', userCheckError);
-    return sendError(res, 500, 'DB_ERROR', 'Database error checking user');
+    log.error('Error checking user existence', { error: userCheckError });
+     return sendError(res, 500, 'DB_ERROR', 'Database error checking user');
   }
 
   if (!existingUser) {
@@ -329,11 +349,11 @@ async function handleLink(supabaseClient, userId, walletAddress, res) {
     .maybeSingle();
 
   if (error) {
-    console.error('Error linking wallet:', error);
-    if (error.code === '23505' || /unique/i.test(error.message || '')) {
-      return sendError(res, 409, 'WALLET_TAKEN', 'Wallet already linked to another user');
-    }
-    return sendError(res, 500, 'LINK_FAILED', 'Failed to link wallet');
+    log.error('Error linking wallet', { error });
+     if (error.code === '23505' || /unique/i.test(error.message || '')) {
+       return sendError(res, 409, 'WALLET_TAKEN', 'Wallet already linked to another user');
+     }
+     return sendError(res, 500, 'LINK_FAILED', 'Failed to link wallet');
   }
 
   if (!data) {
@@ -361,8 +381,8 @@ async function handleUnlink(supabaseClient, userId, res) {
     .maybeSingle();
 
   if (error) {
-    console.error('Error unlinking wallet:', error);
-    return sendError(res, 500, 'UNLINK_FAILED', 'Failed to unlink wallet');
+    log.error('Error unlinking wallet', { error });
+     return sendError(res, 500, 'UNLINK_FAILED', 'Failed to unlink wallet');
   }
 
   if (!data) {
@@ -384,8 +404,8 @@ async function handleGetProfile(supabaseClient, userId, res) {
     .maybeSingle();
 
   if (error) {
-    console.error('Error fetching profile:', error);
-    return sendError(res, 500, 'DB_ERROR', 'Database error');
+    log.error('Error fetching profile', { error });
+     return sendError(res, 500, 'DB_ERROR', 'Database error');
   }
 
   if (!data) {

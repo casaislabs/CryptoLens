@@ -5,6 +5,8 @@ import { WagmiProvider, createConfig, http } from "wagmi";
 import { mainnet, polygon, optimism, arbitrum, base } from "wagmi/chains";
 import { queryClientConfig } from "@/lib/web3Config";
 import { useEffect, useState } from "react";
+import { createLogger } from '@/lib/logger';
+const log = createLogger('client:web3');
 
 // Client-only RainbowKit Provider to avoid SSR interop issues
 const RainbowKitProviderNoSSR = dynamic(
@@ -60,7 +62,7 @@ export default function Web3Providers({ session, children }) {
         });
         if (mounted) setClientWagmiConfig(cfg);
       } catch (e) {
-        console.error("Failed to initialize client Wagmi config:", e);
+        log.error('Failed to initialize client Wagmi config', { error: e });
       }
     })();
     return () => { mounted = false; };

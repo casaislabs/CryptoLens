@@ -5,6 +5,8 @@ import FilterBar from "@/components/FilterBar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner"; // Import Sonner toast
+import { createLogger } from '@/lib/logger';
+const log = createLogger('client:dashboard');
 
 // Load VirtualizedTokenGrid only on client
 const VirtualizedTokenGrid = dynamic(() => import("@/components/VirtualizedTokenGrid"), {
@@ -21,8 +23,9 @@ class GridErrorBoundary extends React.Component {
     return { hasError: true };
   }
   componentDidCatch(error, info) {
-    console.error('Virtualized grid error:', error, info);
+    log.error('Virtualized grid error', { error, info });
   }
+
   render() {
     if (this.state.hasError) {
       return this.props.fallback ?? null;

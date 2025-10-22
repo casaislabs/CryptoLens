@@ -8,6 +8,8 @@ import WalletConnection from "@/components/WalletConnection";
 import { parseApiError, formatValidationDetails, getFriendlyErrorMessage } from '@/lib/apiErrors';
 import Head from "next/head";
 import AppHeader from "@/components/AppHeader";
+import { createLogger } from '@/lib/logger';
+const log = createLogger('client:profile');
 
 export default function Profile() {
   const { data: session, status } = useSession();
@@ -188,7 +190,7 @@ export default function Profile() {
            });
          }
        } catch (error) {
-         console.error('Error loading profile:', error);
+        log.error('Error loading profile', { error });
        } finally {
          setProfileLoading(false);
        }

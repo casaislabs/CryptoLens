@@ -19,7 +19,7 @@ function TokenCard({
 }) {
   const [pendingFavorite, setPendingFavorite] = useState(false);
 
-  const isFav = Array.isArray(favorites) && (favorites.includes(id) || favorites.includes(symbol));
+  const isFav = Array.isArray(favorites) && favorites.includes(id);
 
   const toggleFavorite = async (e) => {
     e.preventDefault();

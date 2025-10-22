@@ -3,6 +3,8 @@ import { useRouter } from "next/router";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useAccount, useChainId, useSignMessage } from 'wagmi';
 import dynamic from 'next/dynamic';
+import { createLogger } from '@/lib/logger';
+const log = createLogger('client:login');
 
 // Client-only wrapper for ConnectButton.Custom to avoid SSR import of RainbowKit
 const ConnectButtonCustom = dynamic(async () => {
@@ -39,6 +41,7 @@ export default function LoginPage() {
 
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [walletSigning, setWalletSigning] = useState(false);
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { signMessageAsync } = useSignMessage();
@@ -76,7 +79,7 @@ export default function LoginPage() {
       // Let NextAuth handle the full OAuth redirect flow
       await signIn("google", { callbackUrl: "/dashboard" });
     } catch (err) {
-      console.error("Error during Google authentication:", err);
+      log.error('Error during Google authentication', { error: err });
       toast.error("Unexpected error", {
         description: "Please try again later.",
         style: toastDarkStyle,
@@ -132,24 +135,12 @@ export default function LoginPage() {
 
   const linkAfterLogin = async () => {
     try {
-      const chall = await requestChallenge('siwe');
-      const msg = buildSiweMessage({
-        domain: chall.domain,
-        address,
-        statement: chall.siwe?.statement || 'Sign to link your wallet to your account',
-        uri: chall.siwe?.uri || (typeof window !== 'undefined' ? window.location.origin : ''),
-        version: chall.siwe?.version || '1',
-        chainId,
-        nonce: chall.nonce,
-        issuedAt: chall.issuedAt,
-        expiresAt: chall.expiresAt,
-      });
-      const sig = await signMessageAsync({ message: msg });
+      // Link wallet using session (no second signature)
       const linkRes = await fetch('/api/wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ action: 'link', method: 'siwe', siweMessage: msg, signature: sig }),
+        body: JSON.stringify({ action: 'link', method: 'session' }),
       });
       if (!linkRes.ok) {
         const errInfo = await parseApiError(linkRes);
@@ -165,16 +156,14 @@ export default function LoginPage() {
       }
       return true;
     } catch (e) {
-      if (isUserRejectedError(e)) {
-        toast.info('Signature rejected', { description: 'Wallet was not linked.', style: toastDarkStyle });
-        return false;
-      }
       toast.error('Could not link wallet', { description: e?.message?.slice(0, 200) || 'Try again later.', style: toastDarkStyle });
       return false;
     }
   };
 
   const handleWalletLogin = async () => {
+    if (walletSigning) return; // Guard against re-entry
+    setWalletSigning(true);
     try {
       if (!isConnected) {
         toast.error('Connect your wallet first', { style: toastDarkStyle });
@@ -214,7 +203,7 @@ export default function LoginPage() {
           }
           return;
         } catch (e) {
-          console.error('Post-login link failed:', e);
+          log.error('Post-login link failed', { error: e });
           toast.error('Could not link wallet', { description: e.message?.slice(0,200) || 'Try again later.', style: toastDarkStyle });
           await signOut({ redirect: false });
           return;
@@ -223,11 +212,11 @@ export default function LoginPage() {
       throw new Error(res?.error || 'Sign-in failed');
     } catch (err) {
       if (isUserRejectedError(err)) {
-        console.info('User rejected signature (SIWE).');
+        log.info('User rejected signature (SIWE)');
         toast.info('Signature rejected', { description: 'No session started.', style: toastDarkStyle });
         return;
       }
-      console.warn('SIWE failed, trying personal_sign:', err);
+      log.warn('SIWE failed, trying personal_sign', { error: err });
       try {
         const chall2 = await requestChallenge('personal_sign');
         const signature2 = await signMessageAsync({ message: chall2.message });
@@ -244,7 +233,7 @@ export default function LoginPage() {
             }
             return;
           } catch (e2) {
-            console.error('Post-login link failed:', e2);
+            log.error('Post-login link failed', { error: e2 });
             toast.error('Could not link wallet', { description: e2.message?.slice(0,200) || 'Try again later.', style: toastDarkStyle });
             await signOut({ redirect: false });
             return;
@@ -253,16 +242,18 @@ export default function LoginPage() {
         throw new Error(res2?.error || 'Sign-in failed');
       } catch (err2) {
         if (isUserRejectedError(err2)) {
-          console.info('User rejected signature (personal_sign).');
+          log.info('User rejected signature (personal_sign)');
           toast.info('Signature rejected', { description: 'No session started.', style: toastDarkStyle });
           return;
         }
-        console.error('Wallet sign-in failed:', err2);
+        log.error('Wallet sign-in failed', { error: err2 });
         toast.error('Failed to sign in with wallet', {
           description: err2?.message?.slice(0, 200) || 'Try again or use Google.',
           style: toastDarkStyle,
         });
       }
+    } finally {
+      setWalletSigning(false);
     }
   };
 
@@ -288,14 +279,15 @@ export default function LoginPage() {
           return (
             <Button
               onClick={() => {
+                if (walletSigning) return; // extra guard
                 if (!connected) openConnectModal(); else handleWalletLogin();
               }}
               className="w-full bg-white/5 hover:bg-white/10 text-white border-white/20 ring-1 ring-white/10"
               variant="outline"
-              disabled={!ready}
+              disabled={!ready || walletSigning}
             >
               <Wallet className="mr-2 h-4 w-4" />
-              {!connected ? 'Connect Wallet' : 'Sign-In with Wallet'}
+              {walletSigning ? 'Signing…' : (!connected ? 'Connect Wallet' : 'Sign-In with Wallet')}
             </Button>
           );
         }}

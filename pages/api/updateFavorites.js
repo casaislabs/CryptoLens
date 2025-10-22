@@ -4,6 +4,8 @@ import { ensureUserProfile } from '@/lib/profile';
 import { makeSupabaseJwsFromToken } from '@/lib/jwt';
 import { setNoStore, sendError, ensureMethod } from '@/lib/http';
 import { UpdateFavoritesBody, parseOrThrow } from '@/lib/validation';
+import { createLogger } from '@/lib/logger';
+let log = createLogger('api:updateFavorites');
 
 // Function to get a user's favorites from Supabase
 async function getUserFavorites(supabaseClient, userId) {
@@ -57,12 +59,16 @@ export default async function handler(req, res) {
   const methodErr = ensureMethod(req, res, ['GET', 'POST']);
   if (methodErr) return;
 
+  const requestId = req.headers['x-request-id'] || null;
+  log = log.child('request', { requestId });
+
   try {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     if (!token?.id) {
       return sendError(res, 401, 'NOT_AUTHENTICATED', 'Not authenticated');
     }
     const userId = token.id;
+    log = log.child('request', { requestId, userId });
 
     // Create JWS (3 parts) for Supabase
     const jws = makeSupabaseJwsFromToken(token);
@@ -94,7 +100,7 @@ export default async function handler(req, res) {
     // Should be covered by ensureMethod
     return sendError(res, 405, 'METHOD_NOT_ALLOWED', 'Method not allowed');
   } catch (error) {
-    console.error('updateFavorites API error:', error);
+    log.error('updateFavorites API error', { error });
     return sendError(res, 500, 'INTERNAL_ERROR', 'Failed to process request');
   }
 }

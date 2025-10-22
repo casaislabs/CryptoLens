@@ -9,6 +9,8 @@ import { Wallet, Link, Unlink, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseApiError, getFriendlyErrorMessage, formatValidationDetails } from '@/lib/apiErrors';
 import Image from 'next/image';
+import { createLogger } from '@/lib/logger';
+const log = createLogger('client:wallet');
 
 // Client-only RainbowKit ConnectButton.Custom wrapper
 const ConnectButtonCustom = dynamic(async () => {
@@ -54,7 +56,7 @@ export default function WalletConnection({ onWalletLinked }) {
         });
       }
     } catch (error) {
-      console.error('Error checking wallet link:', error);
+      log.error('Error checking wallet link', { error });
     }
   }, [session?.user?.id, toastDarkStyle]);
 
@@ -235,7 +237,7 @@ export default function WalletConnection({ onWalletLinked }) {
         });
       }
     } catch (error) {
-      console.error('Error unlinking wallet:', error);
+      log.error('Error unlinking wallet', { error });
       toast.error('Failed to unlink wallet', { style: toastDarkStyle });
     } finally {
       setIsLinking(false);

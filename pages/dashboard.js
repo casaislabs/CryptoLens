@@ -5,6 +5,8 @@ import AppHeader from "@/components/AppHeader";
 import { toast } from "sonner"; // Import the toast library
 import { parseApiError, formatValidationDetails, getFriendlyErrorMessage } from '@/lib/apiErrors';
 import Head from "next/head";
+import { createLogger } from '@/lib/logger';
+const log = createLogger('client:dashboardPage');
 
 
 
@@ -17,12 +19,12 @@ export default function Dashboard({ tokens }) {
   const [topTokens, setTopTokens] = useState(tokens);
 
   useEffect(() => {
-    console.log("Favorites loaded from localStorage:", favorites);
+    log.debug('Favorites loaded from localStorage', { favorites });
   }, [favorites]);
 
   useEffect(() => {
     if (tokens && tokens.length > 0) {
-      console.log("Tokens from server:", tokens); // Debug log
+      log.debug('Tokens from server', { tokens });
       localStorage.setItem("lastTokens", JSON.stringify(tokens));
       setTopTokens(tokens);
     }
@@ -36,7 +38,7 @@ export default function Dashboard({ tokens }) {
       try {
         // Validate that session and userId are available
         if (!session?.user?.id) {
-          console.error("User ID is missing in session.");
+          log.error('User ID is missing in session');
           setFavorites(favIds); // Use local favorites if no session
           if (favIds.length > 0) {
             fetchFavorites(favIds);
@@ -50,11 +52,11 @@ export default function Dashboard({ tokens }) {
         const response = await fetch(`/api/updateFavorites`);
         if (response.ok) {
           const serverFavorites = await response.json();
-          console.log("Favorites from server:", serverFavorites);
+          log.debug('Favorites from server', { serverFavorites });
   
           // Sync favorites between localStorage and the server
           if (JSON.stringify(favIds) !== JSON.stringify(serverFavorites)) {
-            console.log("Syncing localStorage with server favorites");
+            log.info('Syncing localStorage with server favorites');
             localStorage.setItem("favorites", JSON.stringify(serverFavorites));
             setFavorites(serverFavorites);
           } else {
@@ -68,7 +70,7 @@ export default function Dashboard({ tokens }) {
             setFavoriteTokens([]);
           }
         } else {
-          console.error("Failed to fetch favorites from server");
+          log.error('Failed to fetch favorites from server');
           setFavorites(favIds);
           if (favIds.length > 0) {
             fetchFavorites(favIds);
@@ -77,7 +79,7 @@ export default function Dashboard({ tokens }) {
           }
         }
       } catch (err) {
-        console.error("Error syncing favorites:", err);
+        log.error('Error syncing favorites', { error: err });
         setFavorites(favIds);
         if (favIds.length > 0) {
           fetchFavorites(favIds);
@@ -88,10 +90,10 @@ export default function Dashboard({ tokens }) {
     };
   
     if (session?.user?.id) {
-      console.log("Session and user ID available. Syncing favorites...");
+      log.info('Session and user ID available. Syncing favorites');
       syncFavorites();
     } else {
-      console.warn("Session or user ID is not available. Skipping syncFavorites.");
+      log.warn('Session or user ID is not available. Skipping syncFavorites');
     }
   }, [session]);
 
@@ -104,7 +106,7 @@ export default function Dashboard({ tokens }) {
     }
   
     const ids = [...new Set(updated.filter((f) => (typeof f === "string" && f) || typeof f === "number"))];
-    console.log("Filtered favorites to update:", ids); // Debug log
+    log.debug('Filtered favorites to update', { ids });
 
     const prev = favorites;
     setFavorites(ids);
@@ -136,7 +138,7 @@ export default function Dashboard({ tokens }) {
       fetchFavorites(ids);
       return true;
     } catch (err) {
-      console.error("Error updating favorites:", err);
+      log.error('Error updating favorites', { error: err });
       // Revert local state and localStorage if server update fails
       setFavorites(prev);
       localStorage.setItem("favorites", JSON.stringify(prev));
@@ -179,13 +181,13 @@ export default function Dashboard({ tokens }) {
       }
   
       const data = await response.json();
-      console.log("Fetched favorite tokens:", data); // Debug log
+      log.debug('Fetched favorite tokens', { data });
   
       // Save favorite tokens to localStorage
       localStorage.setItem("lastFavoriteTokens", JSON.stringify(data));
       setFavoriteTokens(data);
     } catch (err) {
-      console.error("Error fetching favorites:", err);
+      log.error('Error fetching favorites', { error: err });
   
       // Show an error message and use cached data if available
       toast.error("Failed to fetch favorite tokens. Using cached data.", {
@@ -253,7 +255,7 @@ export async function getServerSideProps(context) {
 
     return { props: { tokens: Array.isArray(data) ? data : [], session } };
   } catch (err) {
-    console.error("Error fetching tokens:", err);
+    log.error('Error fetching tokens', { error: err });
 
     // On error, return empty tokens but keep session
     return { props: { tokens: [], session } };

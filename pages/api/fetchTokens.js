@@ -4,6 +4,8 @@ import { getToken } from 'next-auth/jwt';
 import { setNoStore, sendError, ensureMethod } from '@/lib/http';
 import { FetchTokensQuery, TokenId, parseOrThrow } from '@/lib/validation';
 import { getAllPrices, fetchDataWithRetries } from '@/lib/priceCache';
+import { createLogger } from '@/lib/logger';
+let log = createLogger('api:fetchTokens');
 
 // Function to get a user's favorites from Supabase
 async function getUserFavorites(supabaseClient, userId) {
@@ -58,6 +60,9 @@ export default async function handler(req, res) {
   if (ensure) return;
   setNoStore(res);
 
+  const requestId = req.headers['x-request-id'] || null;
+  log = log.child('request', { requestId });
+
   const now = Date.now();
   let parsed;
 
@@ -76,6 +81,7 @@ export default async function handler(req, res) {
         return sendError(res, 401, 'NOT_AUTHENTICATED', 'Not authenticated');
       }
       const userId = token.id;
+      log = log.child('request', { requestId, userId });
 
       // Create JWS (3 parts) and Supabase client for RLS
       const jws = makeSupabaseJwsFromToken(token);
@@ -168,7 +174,7 @@ export default async function handler(req, res) {
       }
       return res.status(200).json(validatedData);
     } catch (fallbackErr) {
-      console.error('Fallback to CMC failed:', fallbackErr.message || fallbackErr);
+      log.error('Fallback to CMC failed', { error: fallbackErr.message || fallbackErr });
       return sendError(res, 500, 'INTERNAL_ERROR', 'All APIs failed to fetch data.', { reason: fallbackErr.message });
     }
   }

@@ -2,6 +2,8 @@ import { createSupabaseClientWithJwt } from "@/lib/supabase";
 import { getToken } from 'next-auth/jwt';
 import { ensureUserProfile } from "@/lib/profile";
 import { makeSupabaseJwsFromToken } from '@/lib/jwt';
+import { createLogger } from '@/lib/logger';
+let log = createLogger('api:updateProfile');
 
 const normalizeSocialLink = (platform, value) => {
   if (!value) return null;
@@ -34,11 +36,15 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const requestId = req.headers['x-request-id'] || null;
+  log = log.child('request', { requestId });
+
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   if (!token?.id) {
     return res.status(401).json({ error: "Not authenticated" });
   }
   const userId = token.id;
+  log = log.child('request', { requestId, userId });
 
   // Create JWS (3 parts) for Supabase instead of using the raw token (possible JWE)
   const jws = makeSupabaseJwsFromToken(token);
@@ -48,7 +54,7 @@ export default async function handler(req, res) {
   await ensureUserProfile(supabaseClient, token);
 
   const { username, bio, socialLinks } = req.body;
-  console.log("Received data in backend:", { username, bio, socialLinks, userId });
+  log.debug("Received data in backend", { username, bio, socialLinks, userId });
 
   // Validate received data
   if (typeof username !== "string" || username.trim() === "") {
@@ -114,7 +120,7 @@ export default async function handler(req, res) {
       .single();
 
     if (updateError) {
-      console.error("Error updating profile:", updateError);
+      log.error("Error updating profile", { error: updateError });
       return res.status(500).json({ error: "Failed to update profile" });
     }
 
@@ -129,7 +135,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json(formattedProfile);
   } catch (error) {
-    console.error("Error updating profile:", error);
+    log.error("Error updating profile", { error });
     return res.status(500).json({ error: "Failed to update profile" });
   }
 }

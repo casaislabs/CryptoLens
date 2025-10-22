@@ -209,6 +209,58 @@ $$;
 -- 6.2.4: Drop redundant non-unique index (UNIQUE constraint already creates index)
 DROP INDEX IF EXISTS idx_profiles_wallet_address;
 
+-- 6.2.5: Ensure partial UNIQUE index on non-null wallet_address (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'uniq_profiles_wallet_address'
+  ) THEN
+    CREATE UNIQUE INDEX uniq_profiles_wallet_address
+    ON public.profiles (wallet_address)
+    WHERE wallet_address IS NOT NULL;
+  END IF;
+END;
+$$;
+
+-- 6.2.6: Trigger to normalize wallet_address to lowercase on insert/update (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc WHERE proname = 'normalize_wallet_lowercase'
+  ) THEN
+    CREATE FUNCTION public.normalize_wallet_lowercase()
+    RETURNS trigger
+    AS $fn$
+    BEGIN
+      IF NEW.wallet_address IS NOT NULL THEN
+        NEW.wallet_address := LOWER(NEW.wallet_address);
+        IF NEW.wallet_address = '' THEN
+          NEW.wallet_address := NULL;
+        END IF;
+      END IF;
+      RETURN NEW;
+    END;
+    $fn$
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path = public;
+  END IF;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'trg_profiles_wallet_normalize'
+  ) THEN
+    CREATE TRIGGER trg_profiles_wallet_normalize
+    BEFORE INSERT OR UPDATE OF wallet_address ON public.profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION public.normalize_wallet_lowercase();
+  END IF;
+END;
+$$;
+
 -- Note: Global uniqueness is ensured by the UNIQUE column and lowercase CHECK.
 -- If you want to allow the same wallet per network, model an additional column (e.g., chain_id) and change uniqueness to (chain_id, wallet_address).
 

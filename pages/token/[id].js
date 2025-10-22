@@ -7,6 +7,8 @@ import { Tooltip as ShadTooltip, TooltipContent, TooltipProvider, TooltipTrigger
 import { toast } from "sonner"; // Import toast library
 import { useEffect, useState, useRef } from "react";
 import { debounce } from "lodash";
+import { createLogger } from '@/lib/logger';
+const log = createLogger('client:tokenPage');
 
 const TokenChart = dynamic(() => import("@/components/TokenChart"), {
   ssr: false,
@@ -39,7 +41,7 @@ export default function TokenDetails({ token: initialToken, chartData: initialCh
       try {
         setLoading(true);
         setChartError(false);
-        console.log(`Fetching data for token: ${tokenId}`);
+        log.info('Fetching data for token', { tokenId });
         
         const response = await fetch(`/api/token/${tokenId}`, {
           signal: abortControllerRef.current.signal
@@ -54,8 +56,8 @@ export default function TokenDetails({ token: initialToken, chartData: initialCh
         }
         
         const data = await response.json();
-        console.log('API Response data:', data);
-        console.log('Chart data received:', data.chartData);
+        log.debug('API Response data', { data });
+        log.debug('Chart data received', { chartData: data.chartData });
         
         setToken(data.token);
         
@@ -64,19 +66,19 @@ export default function TokenDetails({ token: initialToken, chartData: initialCh
           setChartData(data.chartData);
           setChartError(false);
         } else {
-          console.warn('Invalid or empty chart data received:', data.chartData);
+          log.warn('Invalid or empty chart data received', { chartData: data.chartData });
           setChartData([]);
           setChartError(true);
         }
         
-        console.log(`Successfully loaded data for token: ${tokenId}`);
-        console.log('Chart data state after setting:', data.chartData);
+        log.info('Successfully loaded token data', { tokenId });
+        log.debug('Chart data state after setting', { chartData: data.chartData });
       } catch (error) {
         if (error.name === 'AbortError') {
-          console.log('Request was cancelled');
+          log.debug('Request was cancelled');
           return;
         }
-        console.error('Error fetching token data:', error);
+        log.error('Error fetching token data', { error });
         toast.error('Error loading token data. Please try again.');
       } finally {
         setLoading(false);
@@ -91,7 +93,7 @@ export default function TokenDetails({ token: initialToken, chartData: initialCh
       setToken(null);
       setChartData([]);
       setChartError(false);
-      console.log(`Token changed from ${token?.id} to ${router.query.id}, clearing all data`);
+      log.debug('Token changed, clearing data', { from: token?.id, to: router.query.id });
       
       debouncedFetchToken(router.query.id);
     }
@@ -237,7 +239,7 @@ export async function getServerSideProps({ params, req }) {
     const { token, chartData } = await res.json();
     return { props: { token, chartData } };
   } catch (error) {
-    console.error("Error fetching token data:", error);
+    log.error('Error fetching token data (SSR)', { error });
     return { props: { token: null, chartData: [] } };
   }
 }

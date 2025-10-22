@@ -1,4 +1,6 @@
 import fetch from "node-fetch";
+import { createLogger } from '@/lib/logger';
+let log = createLogger('api:token');
 
 // Simple in-memory cache to avoid excessive API calls
 const cache = new Map();
@@ -31,13 +33,16 @@ export default async function handler(req, res) {
   const { id } = req.query;
   const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
 
+  const requestId = req.headers['x-request-id'] || null;
+  log = log.child('request', { requestId });
+
   if (!id || typeof id !== "string" || id.trim() === "") {
     return res.status(400).json({ error: "Invalid token ID" });
   }
 
   // Check rate limiting
   if (isRateLimited(clientIP)) {
-    console.log(`Rate limit exceeded for IP: ${clientIP}`);
+    log.warn('Rate limit exceeded', { clientIP });
     return res.status(429).json({ error: "Too many requests. Please wait before trying again." });
   }
 
@@ -48,9 +53,9 @@ export default async function handler(req, res) {
   const cachedChartData = cache.get(chartCacheKey);
   
   if (cachedData && cachedChartData && Date.now() - cachedData.timestamp < CACHE_DURATION && Date.now() - cachedChartData.timestamp < CHART_CACHE_DURATION) {
-     console.log(`Returning cached data for token: ${id}`);
-     return res.status(200).json({ token: cachedData.data, chartData: cachedChartData.data });
-   }
+     log.debug('Returning cached data', { id });
+      return res.status(200).json({ token: cachedData.data, chartData: cachedChartData.data });
+    }
 
   try {
     // Fetch token from CoinGecko
@@ -61,7 +66,7 @@ export default async function handler(req, res) {
         token = await resToken.json();
       }
     } catch (error) {
-      console.error("Error fetching from CoinGecko:", error);
+      log.error('Error fetching from CoinGecko', { error });
     }
 
     // If CoinGecko fails, try CoinMarketCap
@@ -92,7 +97,7 @@ export default async function handler(req, res) {
           }
         }
       } catch (error) {
-        console.error("Error fetching from CoinMarketCap:", error);
+        log.error('Error fetching from CoinMarketCap', { error });
       }
     }
 
@@ -103,10 +108,10 @@ export default async function handler(req, res) {
 
     // Fetch chart data from CoinGecko
     let chartData = [];
-    console.log(`Fetching chart data for token: ${id}`);
+    log.info('Fetching chart data for token', { id });
     try {
       const chartUrl = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=7`;
-      console.log(`Chart URL: ${chartUrl}`);
+      log.debug('Chart URL', { chartUrl });
       
       const resChart = await fetch(chartUrl, {
         headers: {
@@ -114,29 +119,29 @@ export default async function handler(req, res) {
           'User-Agent': 'Web3Dashboard/1.0'
         }
       });
-      console.log(`Chart response status: ${resChart.status}`);
+      log.debug('Chart response status', { status: resChart.status });
       
       if (resChart.ok) {
         const chartJson = await resChart.json();
-        console.log(`Chart JSON received:`, chartJson ? 'Valid JSON' : 'Invalid JSON');
-        console.log(`Chart prices array:`, Array.isArray(chartJson?.prices) ? `${chartJson.prices.length} items` : 'Not an array');
+        log.debug('Chart JSON received', { valid: !!chartJson });
+        log.debug('Chart prices array', { items: Array.isArray(chartJson?.prices) ? chartJson.prices.length : 0, isArray: Array.isArray(chartJson?.prices) });
         
         if (chartJson && Array.isArray(chartJson.prices)) {
           chartData = chartJson.prices.map(([timestamp, price]) => ({
             date: new Date(timestamp).toLocaleDateString(),
             price: parseFloat(price.toFixed(2)),
           }));
-          console.log(`Processed chart data: ${chartData.length} items`);
+          log.debug('Processed chart data', { count: chartData.length });
         } else {
-          console.warn(`Invalid chart data structure for ${id}:`, chartJson);
+          log.warn('Invalid chart data structure', { id, chartJson });
         }
       } else if (resChart.status === 429) {
-        console.warn(`Rate limited by CoinGecko for ${id}, will try CoinMarketCap`);
+        log.warn('Rate limited by CoinGecko, will try CoinMarketCap', { id });
       } else {
-        console.error(`Chart fetch failed with status ${resChart.status} for token: ${id}`);
+        log.error('Chart fetch failed', { id, status: resChart.status });
       }
     } catch (error) {
-      console.error(`Error fetching chart data for ${id}:`, error);
+      log.error('Error fetching chart data', { id, error });
     }
     
     // If CoinGecko failed due to rate limit, wait before trying CMC
@@ -146,7 +151,7 @@ export default async function handler(req, res) {
 
     // If CoinGecko fails for chart, try CoinMarketCap
       if (chartData.length === 0 && token?.symbol) {
-        console.log(`CoinGecko chart data failed for ${id}, trying CoinMarketCap...`);
+        log.info('CoinGecko chart data failed, trying CoinMarketCap', { id });
         // Use quotes/latest endpoint instead of historical to avoid 403
         const cmcChartUrl = `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=${token.symbol.toUpperCase()}`;
         const cmcHeaders = {
@@ -154,19 +159,19 @@ export default async function handler(req, res) {
           "Accept": "application/json",
           "Accept-Encoding": "deflate, gzip"
         };
-        console.log(`CMC Chart URL: ${cmcChartUrl}`);
-        console.log(`CMC API Key available: ${process.env.COINMARKETCAP_API_KEY ? 'Yes' : 'No'}`);
+        log.debug('CMC Chart URL', { cmcChartUrl });
+        log.debug('CMC API Key available', { available: !!process.env.COINMARKETCAP_API_KEY });
 
       try {
         const resCmcChart = await fetch(cmcChartUrl, { headers: cmcHeaders });
-        console.log(`CMC Chart response status: ${resCmcChart.status}`);
+        log.debug('CMC Chart response status', { status: resCmcChart.status });
         
         if (resCmcChart.ok) {
           const cmcChartData = await resCmcChart.json();
-          console.log(`CMC Chart data structure:`, cmcChartData ? 'Valid JSON' : 'Invalid JSON');
+          log.debug('CMC Chart data structure', { valid: !!cmcChartData });
           
           if (cmcChartData && cmcChartData.data) {
-            console.log(`CMC Chart data structure:`, Object.keys(cmcChartData.data));
+            log.debug('CMC Chart data keys', { keys: Object.keys(cmcChartData.data) });
             
             // As only current price, generate simulated data for 7 days
             const currentPrice = Object.values(cmcChartData.data)[0]?.quote?.USD?.price;
@@ -183,24 +188,24 @@ export default async function handler(req, res) {
                   price: parseFloat(price.toFixed(2))
                 });
               }
-              console.log(`CMC Processed chart data: ${simulatedData.length} items`);
+              log.debug('CMC Processed chart data', { count: simulatedData.length });
               chartData = simulatedData;
             }
           } else {
-            console.warn(`Invalid CMC chart data structure for ${id}:`, cmcChartData);
+            log.warn('Invalid CMC chart data structure', { id, cmcChartData });
           }
         } else {
-          console.error(`CMC Chart fetch failed with status ${resCmcChart.status} for token: ${id}`);
+          log.error('CMC Chart fetch failed', { id, status: resCmcChart.status });
         }
       } catch (error) {
-        console.error(`Error fetching chart data from CoinMarketCap for ${id}:`, error);
+        log.error('Error fetching chart data from CoinMarketCap', { id, error });
       }
     }
 
     // Final result log
-    console.log(`Final chart data for ${id}: ${chartData.length} items`);
+    log.info('Final chart data', { id, count: chartData.length });
     if (chartData.length === 0) {
-      console.warn(`WARNING: No chart data available for token ${id}`);
+      log.warn('No chart data available', { id });
     }
     
     // Cache separately (chart data with longer cache)
@@ -218,10 +223,10 @@ export default async function handler(req, res) {
       timestamp: Date.now()
     });
     
-    console.log(`Cached data for token: ${id}`);
+    log.debug('Cached data for token', { id });
     return res.status(200).json(responseData);
   } catch (error) {
-    console.error("Unexpected error:", error);
+    log.error('Unexpected error', { error });
     return res.status(500).json({ error: "Internal server error" });
   }
 }
