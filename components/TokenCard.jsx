@@ -17,7 +17,6 @@ function TokenCard({
   updateFavorites,
   favorites = [] // Default value: empty array
 }) {
-  const [navigating, setNavigating] = useState(false);
   const [pendingFavorite, setPendingFavorite] = useState(false);
 
   const isFav = Array.isArray(favorites) && (favorites.includes(id) || favorites.includes(symbol));
@@ -47,27 +46,12 @@ function TokenCard({
     }
   };
 
-  const handleClick = () => {
-    if (navigating) return;
-    setNavigating(true);
-    toast("Loading token details...", {
-      style: { backgroundColor: "#333", color: "#fff" },
-    });
-  };
-
   return (
     <Link
       href={`/token/${id}`}
-      onClick={handleClick}
-      aria-busy={navigating}
-      className={`relative w-full max-w-xs p-5 rounded-2xl bg-white/5 backdrop-blur border border-white/10 shadow-md transition-all duration-300 cursor-pointer group ${navigating ? 'pointer-events-none opacity-60' : 'hover:shadow-xl hover:scale-[1.015]'}`}
+      className={"relative w-full max-w-xs p-5 rounded-2xl bg-white/5 backdrop-blur border border-white/10 shadow-md transition-all duration-300 cursor-pointer group hover:shadow-xl hover:scale-[1.015]"}
+      prefetch={false}
     >
-      {navigating && (
-        <div className="absolute inset-0 grid place-items-center bg-black/20 rounded-2xl text-white text-sm">
-          Loading...
-        </div>
-      )}
-
       <div className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden border border-white/20">
           <Image
