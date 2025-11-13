@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" role="img">
+  <title>CryptoLens — Favicon</title>
+  <desc>Rounded square favicon featuring the central turquoise brand dot.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0F13"/>
+      <stop offset="1" stop-color="#0F172A"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="32" cy="32" r="18" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect width="64" height="64" rx="12" fill="url(#bg)"/>
+
+  <!-- Subtle glow -->
+  <circle cx="32" cy="32" r="18" fill="url(#glow)"/>
+
+  <!-- Outer ring for recognition at small sizes -->
+  <circle cx="32" cy="32" r="18" fill="none" stroke="#22d3ee" stroke-width="4"/>
+
+  <!-- Central brand dot -->
+  <circle cx="32" cy="32" r="10" fill="#22d3ee"/>
+</svg>

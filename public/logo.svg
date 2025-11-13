@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="CryptoLens Mark">
+  <title>CryptoLens — Brand Mark</title>
+  <desc>Brand mark aligned with globe: turquoise ring, subtle inner ring, central dot.</desc>
+  <defs>
+    <radialGradient id="glow" cx="12" cy="12" r="8" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Subtle glow -->
+  <circle cx="12" cy="12" r="8" fill="url(#glow)"/>
+  <!-- Outer ring -->
+  <circle cx="12" cy="12" r="8" fill="none" stroke="#22d3ee" stroke-width="2"/>
+  <!-- Inner hint ring (low opacity) -->
+  <circle cx="12" cy="12" r="7" fill="none" stroke="#22d3ee" stroke-opacity="0.25" stroke-width="1"/>
+  <!-- Central dot -->
+  <circle cx="12" cy="12" r="4" fill="#22d3ee"/>
+</svg>

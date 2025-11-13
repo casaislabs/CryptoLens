@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="CryptoLens social preview">
+  <title>CryptoLens — Social Preview</title>
+  <desc>Unified brand style matching logo and favicon: dark gradient, turquoise ring, central dot.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0B0F13"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softBlur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="12"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Soft glow behind brand mark -->
+  <circle cx="600" cy="315" r="220" fill="url(#glow)" filter="url(#softBlur)"/>
+
+  <!-- Brand ring (consistent with logo/favicon) -->
+  <circle cx="600" cy="315" r="160" fill="none" stroke="#22d3ee" stroke-width="10"/>
+  <circle cx="600" cy="315" r="140" fill="none" stroke="#22d3ee" stroke-opacity="0.25" stroke-width="2"/>
+
+  <!-- Central brand dot -->
+  <circle cx="600" cy="315" r="42" fill="#22d3ee"/>
+
+  <!-- Minimal latitude/meridian hints for texture (subtle, de-emphasized) -->
+  <g stroke="#94a3b8" stroke-opacity="0.25" fill="none">
+    <ellipse cx="600" cy="315" rx="160" ry="60" stroke-width="2"/>
+    <ellipse cx="600" cy="315" rx="160" ry="40" transform="rotate(45 600 315)" stroke-width="1.8"/>
+    <ellipse cx="600" cy="315" rx="160" ry="40" transform="rotate(-45 600 315)" stroke-width="1.8"/>
+  </g>
+
+  <!-- Title and tagline (aligned to site tone) -->
+  <g transform="translate(0, 540)">
+    <text x="50%" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif" font-size="52" fill="#e2e8f0" opacity="0.92">CryptoLens</text>
+    <text x="50%" y="46" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif" font-size="22" fill="#94a3b8" opacity="0.85">Web3 dashboard — prices, favorites and wallets</text>
+  </g>
+</svg>
